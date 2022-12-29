@@ -1,19 +1,250 @@
 package ctrmap.editor.gui.editors.gen5.battle;
 
+import ctrmap.editor.CTRMap;
 import ctrmap.editor.gui.editors.common.AbstractTabbedEditor;
+import ctrmap.editor.gui.editors.text.loaders.ITextArcType;
+import ctrmap.editor.system.workspace.CTRMapProject;
 import ctrmap.formats.common.GameInfo;
+import ctrmap.formats.pokemon.gen5.battle.WBTrainerData;
+import ctrmap.formats.pokemon.text.GenVMessageHandler;
+import ctrmap.formats.pokemon.text.MessageHandler;
+import ctrmap.formats.pokemon.text.MsgStr;
+import ctrmap.formats.pokemon.text.TextFile;
+import ctrmap.missioncontrol_ntr.VLaunchpad;
+import ctrmap.missioncontrol_ntr.VRTC;
+import ctrmap.missioncontrol_ntr.fs.NARCRef;
+import ctrmap.missioncontrol_ntr.fs.NTRGameFS;
+import java.io.IOException;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.swing.ComboBoxModel;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListModel;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+import xstandard.fs.FSFile;
 
 /**
  *
  * @author platinum
  */
 public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbedEditor {
-
-    /**
-     * Creates new form VTrainerEditor
-     */
-    public VTrainerEditor() {
+    private CTRMap Instance;
+    private TextFile TrClasses, TrNames, TrDialogue, BattleTypes, 
+            ItemNames, ItemDescs, MoveNames, MoveDescs, AbilNames, PkmnNames;
+    private List<WBTrainerData> Trainers;
+    private static final Map<String, Integer> SystemTextLUT = Stream.of(
+            new AbstractMap.SimpleEntry<>("ItemDescriptions", 63), 
+            new AbstractMap.SimpleEntry<>("Items", 64), 
+            new AbstractMap.SimpleEntry<>("Pokemon", 90),   
+            new AbstractMap.SimpleEntry<>("BattleTypes", 357),
+            new AbstractMap.SimpleEntry<>("SpecialTrainers", 368),
+            new AbstractMap.SimpleEntry<>("Abilities", 374),
+            new AbstractMap.SimpleEntry<>("TrainerDialogue", 381),
+            new AbstractMap.SimpleEntry<>("Trainers", 382),
+            new AbstractMap.SimpleEntry<>("TrainerClasses", 383),
+            new AbstractMap.SimpleEntry<>("MovesDescriptions", 402),
+            new AbstractMap.SimpleEntry<>("Moves", 403)
+        )
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)
+    );
+    
+    public VTrainerEditor(CTRMap Instance) {
         initComponents();
+        this.Trainers = new ArrayList<>();
+        this.Instance = Instance;
+        trainerSelector.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (Instance != null) {
+                    UpdateNameEntry();
+                    UpdateMiscSettings();
+                    UpdateAIInteger();
+                    UpdateTrainerClassList();
+                    for (int Index = 0; Index < Byte.SIZE; ++Index) {
+                        UpdateAIFlag(Index);
+                    }
+                    for (int Index = 0; Index < WBTrainerData.ITEMS_COUNT_MAX; ++Index) {
+                        UpdateItem(Index);
+                    }
+                }
+            }
+        });
+        trainerClassList.addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent lse) {
+                if (Instance != null) {
+                    int SelIndex = trainerClassList.getSelectedIndex(), TrIndex = Trainers.indexOf(GetCurrentTrainer());
+                    if (SelIndex < 0 || TrIndex < 0 || TrIndex > FS().NARCGetDataMax(NARCRef.TRAINER_DATA)) {
+                        return;
+                    }
+                    GetCurrentTrainer().SetAssignedClass(SelIndex);
+//                    trainerSelector.setEditable(true);
+//                    trainerSelector.getCB().getEditor().setItem(String.format("%s %s", TrClasses.getLine(GetCurrentTrainer().GetAssignedClass()), 
+//                    TrNames.getLine(TrIndex)));
+//                    trainerSelector.setEditable(false);
+                }         
+            }
+        });
+    }
+    
+    private void LoadAllTextArchives() {
+        this.TrClasses = LoadSystemTextArchive(SystemTextLUT.get("TrainerClasses"));
+        this.TrNames = LoadSystemTextArchive(SystemTextLUT.get("Trainers"));
+        this.TrDialogue = LoadSystemTextArchive(SystemTextLUT.get("TrainerDialogue"));
+        this.AbilNames = LoadSystemTextArchive(SystemTextLUT.get("Abilities"));
+        this.ItemNames = LoadSystemTextArchive(SystemTextLUT.get("Items"));
+        this.ItemDescs = LoadSystemTextArchive(SystemTextLUT.get("ItemDescriptions"));
+        this.BattleTypes = LoadSystemTextArchive(SystemTextLUT.get("BattleTypes"));
+    }
+    
+    private void LoadAllTrainers() throws IOException {
+        for (int Index = 0; Index < FS().NARCGetDataMax(NARCRef.TRAINER_DATA); ++Index) {
+            FSFile TrDat = FS().NARCGet(NARCRef.TRAINER_DATA, Index), 
+                    TrPoke = FS().NARCGet(NARCRef.TRAINER_POKEMON, Index);
+            this.Trainers.add(new WBTrainerData(TrDat.getDataIOStream(), TrPoke.getDataIOStream()));
+        }
+    }
+    
+    private void UpdateNameEntry() {
+        nameEntry.setText(TrNames.getLine(this.Trainers.indexOf(GetCurrentTrainer())));
+    }
+    
+    private WBTrainerData GetCurrentTrainer() {
+        // Load current trainer.
+        int Index = trainerSelector.getValueSpinner();
+        if (Index < 0 || Index > FS().NARCGetDataMax(NARCRef.TRAINER_DATA)) {
+            return null;
+        }
+        return Trainers.get(Index);
+    }
+    
+    private void UpdateMiscSettings() { 
+        // Set settings options.
+        canHeal.setSelected(GetCurrentTrainer().GetCanHeal());
+        canOverrideMoves.setSelected(GetCurrentTrainer().CanOverrideMoves());
+        canOverrideItems.setSelected(GetCurrentTrainer().CanOverrideHeldItem());
+        battleTypeComboBox.setSelectedIndex(GetCurrentTrainer().GetBattleType());
+    }
+    
+    private void UpdateItem(int Index) {
+        // Items from each item slot.
+        switch (Index) {
+            case 0:
+                Item1ComboBox.setSelectedIndex(GetCurrentTrainer().GetItem(Index));
+                break;
+            case 1:
+                Item2ComboBox.setSelectedIndex(GetCurrentTrainer().GetItem(Index));
+                break;
+            case 2:
+                Item3ComboBox.setSelectedIndex(GetCurrentTrainer().GetItem(Index));
+                break;
+            case 3:
+                Item4ComboBox.setSelectedIndex(GetCurrentTrainer().GetItem(Index));
+                break;
+        }
+    }
+    
+    private void UpdateAIInteger() {   
+        AIConfigurationInteger.setValue(GetCurrentTrainer().GetAIValue());
+    }
+    
+    private void UpdateAIFlag(int Index) {
+        switch (Index) {
+            case 0:
+                AIBasicCheckbox.setSelected(GetCurrentTrainer().GetAIFlag(0));
+                break;
+            case 1:
+                AIWillAttackCheckbox.setSelected(GetCurrentTrainer().GetAIFlag(1));
+                break;
+            case 2:  
+                AIAdvancedCheckbox.setSelected(GetCurrentTrainer().GetAIFlag(2));
+                break;
+            case 3: 
+                AIUnusedCheckbox.setSelected(GetCurrentTrainer().GetAIFlag(3));
+                break;
+            case 4:
+                AIRivalCheckbox.setSelected(GetCurrentTrainer().GetAIFlag(4));
+                break;
+            case 5:
+                AIUnused2Checkbox.setSelected(GetCurrentTrainer().GetAIFlag(5));
+                break;
+            case 6:
+                AIUnused3Checkbox.setSelected(GetCurrentTrainer().GetAIFlag(6));
+                break;
+            case 7:
+                AIMultiBattleCheckbox.setSelected(GetCurrentTrainer().GetAIFlag(7));
+                break;
+        }
+    }
+    
+    private void UpdateTrainerClassList() {
+        trainerClassList.setSelectedIndex(GetCurrentTrainer().GetAssignedClass());
+    }
+    
+    @Override
+    public void onProjectLoaded(CTRMapProject proj) {
+        try {
+            LoadAllTrainers();
+            LoadAllTextArchives();
+        } catch (IOException ex) {
+            Logger.getLogger(VTrainerEditor.class.getName()).log(Level.SEVERE, null, ex);
+            return;
+        }
+        
+        // Setup trainer class list model.
+        DefaultListModel TrClassModel = new DefaultListModel();
+        for (MsgStr e : this.TrClasses.lines) {
+            TrClassModel.addElement(e);
+        }
+        trainerClassList.setModel(TrClassModel);
+        
+        // Setup top bar.
+        for (int Index = 0; Index < TrNames.getLineCount(); ++Index) {
+            trainerSelector.addItem(String.format("%s %s", TrClasses.getLine(
+                    Trainers.get(Index).GetAssignedClass()), TrNames.getLine(Index)));
+        }
+        
+        // Setup item boxes.
+        // TODO: Fix! There has to be a better way to do this...
+        DefaultComboBoxModel ItemModel = new DefaultComboBoxModel(),
+                Item2Model = new DefaultComboBoxModel(),
+                Item3Model = new DefaultComboBoxModel(),
+                Item4Model = new DefaultComboBoxModel();
+        for (MsgStr e : this.ItemNames.lines) {
+            ItemModel.addElement(e);
+            Item2Model.addElement(e);
+            Item3Model.addElement(e);
+            Item4Model.addElement(e);
+        }
+        Item1ComboBox.setModel(ItemModel);
+        Item2ComboBox.setModel(Item2Model);
+        Item3ComboBox.setModel(Item3Model);
+        Item4ComboBox.setModel(Item4Model);
+        
+        // Setup battle type box.
+        DefaultComboBoxModel BattleTypeModel = new DefaultComboBoxModel();
+        for (MsgStr e : this.BattleTypes.lines) {
+            BattleTypeModel.addElement(e);
+        }
+        battleTypeComboBox.setModel(BattleTypeModel);
+    }
+            
+    
+    TextFile LoadSystemTextArchive(int Index) {
+	return new TextFile(FS().NARCGet(NARCRef.MSGDATA_SYSTEM, Index), GenVMessageHandler.INSTANCE);
+    }
+    
+    NTRGameFS FS() {
+        return Instance.getMissionControl(VLaunchpad.class).fs;
     }
 
     /**
@@ -26,46 +257,48 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
     private void initComponents() {
 
         jCheckBoxMenuItem1 = new javax.swing.JCheckBoxMenuItem();
-        flasgPanel = new javax.swing.JPanel();
-        flasgPanel2 = new javax.swing.JPanel();
-        jCheckBox1 = new javax.swing.JCheckBox();
-        jCheckBox2 = new javax.swing.JCheckBox();
-        jCheckBox3 = new javax.swing.JCheckBox();
-        jCheckBox4 = new javax.swing.JCheckBox();
-        jCheckBox5 = new javax.swing.JCheckBox();
-        jCheckBox6 = new javax.swing.JCheckBox();
-        jCheckBox7 = new javax.swing.JCheckBox();
-        jCheckBox8 = new javax.swing.JCheckBox();
-        flasgPanel4 = new javax.swing.JPanel();
-        flashType = new javax.swing.JComboBox<>();
-        flashType1 = new javax.swing.JComboBox<>();
-        flashType2 = new javax.swing.JComboBox<>();
-        flashType3 = new javax.swing.JComboBox<>();
-        flasgPanel5 = new javax.swing.JPanel();
+        propertiesPanel = new javax.swing.JPanel();
+        aiPanel = new javax.swing.JPanel();
+        AIBasicCheckbox = new javax.swing.JCheckBox();
+        AIWillAttackCheckbox = new javax.swing.JCheckBox();
+        AIAdvancedCheckbox = new javax.swing.JCheckBox();
+        AIUnusedCheckbox = new javax.swing.JCheckBox();
+        AIRivalCheckbox = new javax.swing.JCheckBox();
+        AIUnused2Checkbox = new javax.swing.JCheckBox();
+        AIUnused3Checkbox = new javax.swing.JCheckBox();
+        AIMultiBattleCheckbox = new javax.swing.JCheckBox();
+        AIConfigurationInteger = new javax.swing.JSpinner();
+        AIConfigurationIntegerLabel = new javax.swing.JLabel();
+        itemsPanel = new javax.swing.JPanel();
+        Item1ComboBox = new javax.swing.JComboBox<>();
+        Item2ComboBox = new javax.swing.JComboBox<>();
+        Item3ComboBox = new javax.swing.JComboBox<>();
+        Item4ComboBox = new javax.swing.JComboBox<>();
+        generalPanel = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
-        jList1 = new javax.swing.JList<>();
+        trainerClassList = new javax.swing.JList<>();
         areaLabel = new javax.swing.JLabel();
-        jCheckBox9 = new javax.swing.JCheckBox();
-        jCheckBox10 = new javax.swing.JCheckBox();
-        jCheckBox11 = new javax.swing.JCheckBox();
+        canOverrideMoves = new javax.swing.JCheckBox();
+        canOverrideItems = new javax.swing.JCheckBox();
+        canHeal = new javax.swing.JCheckBox();
         jLabel1 = new javax.swing.JLabel();
-        areaLabel1 = new javax.swing.JLabel();
-        jTextField1 = new javax.swing.JTextField();
-        areaLabel2 = new javax.swing.JLabel();
-        flasgPanel6 = new javax.swing.JPanel();
-        areaLabel3 = new javax.swing.JLabel();
-        jSpinner1 = new javax.swing.JSpinner();
-        jSpinner2 = new javax.swing.JSpinner();
-        areaLabel4 = new javax.swing.JLabel();
+        settingsLabel = new javax.swing.JLabel();
+        nameEntry = new javax.swing.JTextField();
+        jButton1 = new javax.swing.JButton();
+        battleTypeLabel = new javax.swing.JLabel();
+        battleTypeComboBox = new javax.swing.JComboBox<>();
+        rewardsPanel = new javax.swing.JPanel();
+        rewardItemLabel = new javax.swing.JLabel();
+        rewardItemSpinner = new javax.swing.JSpinner();
+        rewardMoneySpinner = new javax.swing.JSpinner();
+        rewardMoneyLabel = new javax.swing.JLabel();
         jSeparator1 = new javax.swing.JSeparator();
-        zoneLabel = new javax.swing.JLabel();
-        zoneDropdown = new xstandard.gui.components.combobox.ComboBoxAndSpinner();
-        flasgPanel3 = new javax.swing.JPanel();
-        jTabbedPane1 = new javax.swing.JTabbedPane();
-        jPanel3 = new javax.swing.JPanel();
-        jTabbedPane3 = new javax.swing.JTabbedPane();
-        jSplitPane1 = new javax.swing.JSplitPane();
-        jPanel1 = new javax.swing.JPanel();
+        trainerLabel = new javax.swing.JLabel();
+        trainerSelector = new xstandard.gui.components.combobox.ComboBoxAndSpinner();
+        partyAndTextPanel = new javax.swing.JPanel();
+        partyAndTextTabbedPane = new javax.swing.JTabbedPane();
+        partyTab = new javax.swing.JPanel();
+        textTab = new javax.swing.JPanel();
         jSeparator3 = new javax.swing.JSeparator();
         jScrollPane3 = new javax.swing.JScrollPane();
         jTable1 = new javax.swing.JTable();
@@ -73,315 +306,334 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
         jCheckBoxMenuItem1.setSelected(true);
         jCheckBoxMenuItem1.setText("jCheckBoxMenuItem1");
 
-        flasgPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Trainer Properties"));
+        propertiesPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Trainer Properties"));
 
-        flasgPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("AI Configuration"));
+        aiPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("AI Configuration"));
 
-        jCheckBox1.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jCheckBox1.setText("Basic AI");
+        AIBasicCheckbox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        AIBasicCheckbox.setText("Basic AI");
 
-        jCheckBox2.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jCheckBox2.setText("Will Attack");
+        AIWillAttackCheckbox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        AIWillAttackCheckbox.setText("Will Attack");
 
-        jCheckBox3.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jCheckBox3.setText("Advanced");
+        AIAdvancedCheckbox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        AIAdvancedCheckbox.setText("Advanced");
 
-        jCheckBox4.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jCheckBox4.setText("Unused");
+        AIUnusedCheckbox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        AIUnusedCheckbox.setText("Unused");
 
-        jCheckBox5.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jCheckBox5.setText("Rival");
+        AIRivalCheckbox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        AIRivalCheckbox.setText("Rival");
 
-        jCheckBox6.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jCheckBox6.setText("Unused 2");
+        AIUnused2Checkbox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        AIUnused2Checkbox.setText("Unused 2");
 
-        jCheckBox7.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jCheckBox7.setText("Unused 3");
+        AIUnused3Checkbox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        AIUnused3Checkbox.setText("Unused 3");
 
-        jCheckBox8.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jCheckBox8.setText("Multi-Battle");
+        AIMultiBattleCheckbox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        AIMultiBattleCheckbox.setText("Multi-Battle");
 
-        javax.swing.GroupLayout flasgPanel2Layout = new javax.swing.GroupLayout(flasgPanel2);
-        flasgPanel2.setLayout(flasgPanel2Layout);
-        flasgPanel2Layout.setHorizontalGroup(
-            flasgPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(flasgPanel2Layout.createSequentialGroup()
+        AIConfigurationInteger.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+
+        AIConfigurationIntegerLabel.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        AIConfigurationIntegerLabel.setText("Configuration Integer");
+
+        javax.swing.GroupLayout aiPanelLayout = new javax.swing.GroupLayout(aiPanel);
+        aiPanel.setLayout(aiPanelLayout);
+        aiPanelLayout.setHorizontalGroup(
+            aiPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(aiPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(flasgPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(flasgPanel2Layout.createSequentialGroup()
-                        .addComponent(jCheckBox1, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(aiPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(aiPanelLayout.createSequentialGroup()
+                        .addComponent(AIUnused3Checkbox, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jCheckBox2, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(AIMultiBattleCheckbox, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jCheckBox3, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(flasgPanel2Layout.createSequentialGroup()
-                        .addComponent(jCheckBox4, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(AIConfigurationIntegerLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jCheckBox5, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(AIConfigurationInteger, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(aiPanelLayout.createSequentialGroup()
+                        .addComponent(AIBasicCheckbox, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jCheckBox6, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(flasgPanel2Layout.createSequentialGroup()
-                        .addComponent(jCheckBox7, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(AIWillAttackCheckbox, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jCheckBox8, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addComponent(AIAdvancedCheckbox, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(aiPanelLayout.createSequentialGroup()
+                        .addComponent(AIUnusedCheckbox, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(AIRivalCheckbox, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(AIUnused2Checkbox, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(12, Short.MAX_VALUE))
         );
 
-        flasgPanel2Layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {jCheckBox1, jCheckBox2});
+        aiPanelLayout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {AIBasicCheckbox, AIWillAttackCheckbox});
 
-        flasgPanel2Layout.setVerticalGroup(
-            flasgPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(flasgPanel2Layout.createSequentialGroup()
-                .addGroup(flasgPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jCheckBox1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jCheckBox2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jCheckBox3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        aiPanelLayout.setVerticalGroup(
+            aiPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(aiPanelLayout.createSequentialGroup()
+                .addGroup(aiPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(AIBasicCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(AIWillAttackCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(AIAdvancedCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(flasgPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jCheckBox4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jCheckBox5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jCheckBox6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(aiPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(AIUnusedCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(AIRivalCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(AIUnused2Checkbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(flasgPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jCheckBox7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jCheckBox8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                .addGroup(aiPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(AIUnused3Checkbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(AIMultiBattleCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(aiPanelLayout.createSequentialGroup()
+                        .addGroup(aiPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(AIConfigurationIntegerLabel)
+                            .addComponent(AIConfigurationInteger, javax.swing.GroupLayout.PREFERRED_SIZE, 19, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addContainerGap(12, Short.MAX_VALUE))))
         );
 
-        flasgPanel4.setBorder(javax.swing.BorderFactory.createTitledBorder("Items"));
+        itemsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Items"));
 
-        flashType.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        flashType.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+        Item1ComboBox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        Item1ComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
 
-        flashType1.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        flashType1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+        Item2ComboBox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        Item2ComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
 
-        flashType2.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        flashType2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+        Item3ComboBox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        Item3ComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
 
-        flashType3.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        flashType3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+        Item4ComboBox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        Item4ComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
 
-        javax.swing.GroupLayout flasgPanel4Layout = new javax.swing.GroupLayout(flasgPanel4);
-        flasgPanel4.setLayout(flasgPanel4Layout);
-        flasgPanel4Layout.setHorizontalGroup(
-            flasgPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(flasgPanel4Layout.createSequentialGroup()
+        javax.swing.GroupLayout itemsPanelLayout = new javax.swing.GroupLayout(itemsPanel);
+        itemsPanel.setLayout(itemsPanelLayout);
+        itemsPanelLayout.setHorizontalGroup(
+            itemsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(itemsPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(flasgPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(flashType2, 0, 121, Short.MAX_VALUE)
-                    .addComponent(flashType, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(itemsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(Item3ComboBox, 0, 121, Short.MAX_VALUE)
+                    .addComponent(Item1ComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(flasgPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(flashType1, 0, 121, Short.MAX_VALUE)
-                    .addComponent(flashType3, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(itemsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(Item2ComboBox, 0, 121, Short.MAX_VALUE)
+                    .addComponent(Item4ComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
-        flasgPanel4Layout.setVerticalGroup(
-            flasgPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(flasgPanel4Layout.createSequentialGroup()
-                .addGroup(flasgPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(flashType, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(flashType1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+        itemsPanelLayout.setVerticalGroup(
+            itemsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(itemsPanelLayout.createSequentialGroup()
+                .addGroup(itemsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(Item1ComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(Item2ComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(flasgPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(flashType2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(flashType3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGroup(itemsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(Item3ComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(Item4ComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(8, Short.MAX_VALUE))
         );
 
-        flasgPanel5.setBorder(javax.swing.BorderFactory.createTitledBorder("General"));
+        generalPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("General"));
 
-        jList1.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jList1.setModel(new javax.swing.AbstractListModel<String>() {
+        trainerClassList.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        trainerClassList.setModel(new javax.swing.AbstractListModel<String>() {
             String[] strings = { "Item 1", "Item 2", "Item 3", "Item 4", "Item 5" };
             public int getSize() { return strings.length; }
             public String getElementAt(int i) { return strings[i]; }
         });
-        jScrollPane1.setViewportView(jList1);
+        trainerClassList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        trainerClassList.setAutoscrolls(false);
+        jScrollPane1.setViewportView(trainerClassList);
 
         areaLabel.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
         areaLabel.setText("Trainer Class");
 
-        jCheckBox9.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jCheckBox9.setText("Can Override Moves");
+        canOverrideMoves.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        canOverrideMoves.setText("Can Override Moves");
 
-        jCheckBox10.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jCheckBox10.setText("Can Override Items");
+        canOverrideItems.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        canOverrideItems.setText("Can Override Items");
 
-        jCheckBox11.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        jCheckBox11.setText("Can Heal Pokemon");
+        canHeal.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        canHeal.setText("Can Heal Pokemon");
 
         jLabel1.setBackground(new java.awt.Color(102, 102, 102));
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel1.setText("Preview Here");
         jLabel1.setOpaque(true);
 
-        areaLabel1.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        areaLabel1.setText("Settings");
+        settingsLabel.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        settingsLabel.setText("Settings");
 
-        jTextField1.setFont(new java.awt.Font("Droid Sans", 0, 10)); // NOI18N
-        jTextField1.setText("Name");
+        nameEntry.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        nameEntry.setText("Name");
 
-        areaLabel2.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        areaLabel2.setText("Name");
+        jButton1.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        jButton1.setText("Edit Trainer Classes");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
+            }
+        });
 
-        javax.swing.GroupLayout flasgPanel5Layout = new javax.swing.GroupLayout(flasgPanel5);
-        flasgPanel5.setLayout(flasgPanel5Layout);
-        flasgPanel5Layout.setHorizontalGroup(
-            flasgPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(flasgPanel5Layout.createSequentialGroup()
+        battleTypeLabel.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        battleTypeLabel.setText("Battle Type");
+
+        battleTypeComboBox.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        battleTypeComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+
+        javax.swing.GroupLayout generalPanelLayout = new javax.swing.GroupLayout(generalPanel);
+        generalPanel.setLayout(generalPanelLayout);
+        generalPanelLayout.setHorizontalGroup(
+            generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(generalPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(flasgPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(flasgPanel5Layout.createSequentialGroup()
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 139, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(areaLabel)
+                    .addGroup(generalPanelLayout.createSequentialGroup()
+                        .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jScrollPane1)
+                            .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, 139, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(flasgPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                        .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 132, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(flasgPanel5Layout.createSequentialGroup()
-                                .addComponent(areaLabel2)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 92, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                    .addComponent(areaLabel))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(flasgPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jCheckBox9)
-                    .addComponent(jCheckBox10)
-                    .addComponent(jCheckBox11)
-                    .addComponent(areaLabel1))
-                .addGap(14, 14, 14))
+                            .addComponent(nameEntry, javax.swing.GroupLayout.PREFERRED_SIZE, 132, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                .addGap(18, 18, 18)
+                .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(canOverrideMoves)
+                    .addComponent(canOverrideItems)
+                    .addComponent(canHeal)
+                    .addComponent(settingsLabel)
+                    .addComponent(battleTypeLabel)
+                    .addComponent(battleTypeComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, 132, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(25, Short.MAX_VALUE))
         );
-        flasgPanel5Layout.setVerticalGroup(
-            flasgPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(flasgPanel5Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(flasgPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(flasgPanel5Layout.createSequentialGroup()
-                        .addComponent(areaLabel)
+        generalPanelLayout.setVerticalGroup(
+            generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(generalPanelLayout.createSequentialGroup()
+                .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(generalPanelLayout.createSequentialGroup()
+                        .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(areaLabel)
+                            .addComponent(settingsLabel))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 151, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(flasgPanel5Layout.createSequentialGroup()
-                        .addComponent(areaLabel1)
+                        .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)))
+                    .addGroup(generalPanelLayout.createSequentialGroup()
+                        .addGap(21, 21, 21)
+                        .addComponent(canHeal)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(flasgPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(flasgPanel5Layout.createSequentialGroup()
-                                .addComponent(jCheckBox11)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jCheckBox10)
-                                .addGap(6, 6, 6)
-                                .addComponent(jCheckBox9)
-                                .addGap(0, 0, Short.MAX_VALUE))
-                            .addGroup(flasgPanel5Layout.createSequentialGroup()
-                                .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(flasgPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                    .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(areaLabel2))))))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-
-        flasgPanel6.setBorder(javax.swing.BorderFactory.createTitledBorder("Rewards"));
-
-        areaLabel3.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        areaLabel3.setText("Reward Item");
-
-        jSpinner1.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-
-        jSpinner2.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-
-        areaLabel4.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        areaLabel4.setText("Reward Money");
-
-        javax.swing.GroupLayout flasgPanel6Layout = new javax.swing.GroupLayout(flasgPanel6);
-        flasgPanel6.setLayout(flasgPanel6Layout);
-        flasgPanel6Layout.setHorizontalGroup(
-            flasgPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(flasgPanel6Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(flasgPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(areaLabel4)
-                    .addComponent(areaLabel3))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(flasgPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jSpinner1, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
-                    .addComponent(jSpinner2, javax.swing.GroupLayout.PREFERRED_SIZE, 47, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-        flasgPanel6Layout.setVerticalGroup(
-            flasgPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(flasgPanel6Layout.createSequentialGroup()
-                .addGroup(flasgPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jSpinner1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(areaLabel3))
+                        .addComponent(canOverrideItems)
+                        .addGap(6, 6, 6)
+                        .addComponent(canOverrideMoves)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 9, Short.MAX_VALUE)
+                        .addComponent(battleTypeLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(battleTypeComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(flasgPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(areaLabel4)
-                    .addComponent(jSpinner2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(nameEntry, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jButton1))
+                .addGap(6, 6, 6))
+        );
+
+        rewardsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Rewards"));
+
+        rewardItemLabel.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        rewardItemLabel.setText("Reward Item");
+
+        rewardItemSpinner.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+
+        rewardMoneySpinner.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+
+        rewardMoneyLabel.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        rewardMoneyLabel.setText("Reward Money");
+
+        javax.swing.GroupLayout rewardsPanelLayout = new javax.swing.GroupLayout(rewardsPanel);
+        rewardsPanel.setLayout(rewardsPanelLayout);
+        rewardsPanelLayout.setHorizontalGroup(
+            rewardsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(rewardsPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(rewardsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(rewardMoneyLabel)
+                    .addComponent(rewardItemLabel))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(rewardsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(rewardItemSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+                    .addComponent(rewardMoneySpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 47, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        rewardsPanelLayout.setVerticalGroup(
+            rewardsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(rewardsPanelLayout.createSequentialGroup()
+                .addGroup(rewardsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(rewardItemSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(rewardItemLabel))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(rewardsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(rewardMoneyLabel)
+                    .addComponent(rewardMoneySpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(0, 8, Short.MAX_VALUE))
         );
 
-        javax.swing.GroupLayout flasgPanelLayout = new javax.swing.GroupLayout(flasgPanel);
-        flasgPanel.setLayout(flasgPanelLayout);
-        flasgPanelLayout.setHorizontalGroup(
-            flasgPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, flasgPanelLayout.createSequentialGroup()
+        javax.swing.GroupLayout propertiesPanelLayout = new javax.swing.GroupLayout(propertiesPanel);
+        propertiesPanel.setLayout(propertiesPanelLayout);
+        propertiesPanelLayout.setHorizontalGroup(
+            propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(propertiesPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(flasgPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(flasgPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(flasgPanel5, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, flasgPanelLayout.createSequentialGroup()
-                        .addComponent(flasgPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(flasgPanel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                .addContainerGap())
+                .addGroup(propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(aiPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addGroup(propertiesPanelLayout.createSequentialGroup()
+                            .addComponent(itemsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addComponent(rewardsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addComponent(generalPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
-        flasgPanelLayout.setVerticalGroup(
-            flasgPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(flasgPanelLayout.createSequentialGroup()
+        propertiesPanelLayout.setVerticalGroup(
+            propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(propertiesPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(flasgPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(generalPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(3, 3, 3)
+                .addGroup(propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(itemsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(rewardsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(flasgPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(flasgPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(flasgPanel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(flasgPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(aiPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
 
-        zoneLabel.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        zoneLabel.setText("Trainer");
+        trainerLabel.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        trainerLabel.setText("Trainer");
 
-        zoneDropdown.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        zoneDropdown.setMaximumRowCount(35);
+        trainerSelector.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        trainerSelector.setMaximumRowCount(35);
 
-        flasgPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("Other"));
+        partyAndTextPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Other"));
 
-        jTabbedPane1.setToolTipText("");
-        jTabbedPane1.setFont(new java.awt.Font("Droid Sans", 0, 14)); // NOI18N
+        partyAndTextTabbedPane.setToolTipText("");
+        partyAndTextTabbedPane.setFont(new java.awt.Font("Droid Sans", 0, 14)); // NOI18N
 
-        jSplitPane1.setDividerLocation(275);
-
-        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
-        jPanel3.setLayout(jPanel3Layout);
-        jPanel3Layout.setHorizontalGroup(
-            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel3Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jTabbedPane3)
-                .addContainerGap())
-            .addComponent(jSplitPane1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 545, Short.MAX_VALUE)
+        javax.swing.GroupLayout partyTabLayout = new javax.swing.GroupLayout(partyTab);
+        partyTab.setLayout(partyTabLayout);
+        partyTabLayout.setHorizontalGroup(
+            partyTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 548, Short.MAX_VALUE)
         );
-        jPanel3Layout.setVerticalGroup(
-            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel3Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jTabbedPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 302, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
-                .addComponent(jSplitPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+        partyTabLayout.setVerticalGroup(
+            partyTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 376, Short.MAX_VALUE)
         );
 
-        jTabbedPane1.addTab("Party", jPanel3);
+        partyAndTextTabbedPane.addTab("Party", partyTab);
 
         jTable1.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -404,42 +656,42 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
         });
         jScrollPane3.setViewportView(jTable1);
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+        javax.swing.GroupLayout textTabLayout = new javax.swing.GroupLayout(textTab);
+        textTab.setLayout(textTabLayout);
+        textTabLayout.setHorizontalGroup(
+            textTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, textTabLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                .addGroup(textTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(jSeparator3, javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 533, Short.MAX_VALUE))
+                    .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 536, Short.MAX_VALUE))
                 .addContainerGap())
         );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+        textTabLayout.setVerticalGroup(
+            textTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, textTabLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 309, Short.MAX_VALUE)
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jSeparator3, javax.swing.GroupLayout.DEFAULT_SIZE, 10, Short.MAX_VALUE)
+                .addComponent(jSeparator3, javax.swing.GroupLayout.DEFAULT_SIZE, 14, Short.MAX_VALUE)
                 .addGap(40, 40, 40))
         );
 
-        jTabbedPane1.addTab("Text Table", jPanel1);
+        partyAndTextTabbedPane.addTab("Text Table", textTab);
 
-        javax.swing.GroupLayout flasgPanel3Layout = new javax.swing.GroupLayout(flasgPanel3);
-        flasgPanel3.setLayout(flasgPanel3Layout);
-        flasgPanel3Layout.setHorizontalGroup(
-            flasgPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(flasgPanel3Layout.createSequentialGroup()
+        javax.swing.GroupLayout partyAndTextPanelLayout = new javax.swing.GroupLayout(partyAndTextPanel);
+        partyAndTextPanel.setLayout(partyAndTextPanelLayout);
+        partyAndTextPanelLayout.setHorizontalGroup(
+            partyAndTextPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(partyAndTextPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jTabbedPane1)
+                .addComponent(partyAndTextTabbedPane)
                 .addContainerGap())
         );
-        flasgPanel3Layout.setVerticalGroup(
-            flasgPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(flasgPanel3Layout.createSequentialGroup()
-                .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+        partyAndTextPanelLayout.setVerticalGroup(
+            partyAndTextPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(partyAndTextPanelLayout.createSequentialGroup()
+                .addComponent(partyAndTextTabbedPane, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -448,40 +700,43 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addComponent(trainerLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(trainerSelector, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(zoneLabel)
+                        .addComponent(propertiesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(zoneDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addComponent(jSeparator1)
-                        .addGap(22, 22, 22))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addComponent(flasgPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(5, 5, 5)
-                        .addComponent(flasgPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addContainerGap())))
+                        .addComponent(partyAndTextPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(jSeparator1)))
+                .addGap(22, 22, 22))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                    .addComponent(zoneDropdown, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(zoneLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(trainerSelector, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(trainerLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(flasgPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(flasgPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(propertiesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(partyAndTextPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
 
-        flasgPanel.getAccessibleContext().setAccessibleName("0");
+        propertiesPanel.getAccessibleContext().setAccessibleName("0");
     }// </editor-fold>//GEN-END:initComponents
+
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jButton1ActionPerformed
 
     @Override
     public String getTabName() {
@@ -494,49 +749,51 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
     }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JCheckBox AIAdvancedCheckbox;
+    private javax.swing.JCheckBox AIBasicCheckbox;
+    private javax.swing.JSpinner AIConfigurationInteger;
+    private javax.swing.JLabel AIConfigurationIntegerLabel;
+    private javax.swing.JCheckBox AIMultiBattleCheckbox;
+    private javax.swing.JCheckBox AIRivalCheckbox;
+    private javax.swing.JCheckBox AIUnused2Checkbox;
+    private javax.swing.JCheckBox AIUnused3Checkbox;
+    private javax.swing.JCheckBox AIUnusedCheckbox;
+    private javax.swing.JCheckBox AIWillAttackCheckbox;
+    private javax.swing.JComboBox<String> Item1ComboBox;
+    private javax.swing.JComboBox<String> Item2ComboBox;
+    private javax.swing.JComboBox<String> Item3ComboBox;
+    private javax.swing.JComboBox<String> Item4ComboBox;
+    private javax.swing.JPanel aiPanel;
     private javax.swing.JLabel areaLabel;
-    private javax.swing.JLabel areaLabel1;
-    private javax.swing.JLabel areaLabel2;
-    private javax.swing.JLabel areaLabel3;
-    private javax.swing.JLabel areaLabel4;
-    private javax.swing.JPanel flasgPanel;
-    private javax.swing.JPanel flasgPanel2;
-    private javax.swing.JPanel flasgPanel3;
-    private javax.swing.JPanel flasgPanel4;
-    private javax.swing.JPanel flasgPanel5;
-    private javax.swing.JPanel flasgPanel6;
-    private javax.swing.JComboBox<String> flashType;
-    private javax.swing.JComboBox<String> flashType1;
-    private javax.swing.JComboBox<String> flashType2;
-    private javax.swing.JComboBox<String> flashType3;
-    private javax.swing.JCheckBox jCheckBox1;
-    private javax.swing.JCheckBox jCheckBox10;
-    private javax.swing.JCheckBox jCheckBox11;
-    private javax.swing.JCheckBox jCheckBox2;
-    private javax.swing.JCheckBox jCheckBox3;
-    private javax.swing.JCheckBox jCheckBox4;
-    private javax.swing.JCheckBox jCheckBox5;
-    private javax.swing.JCheckBox jCheckBox6;
-    private javax.swing.JCheckBox jCheckBox7;
-    private javax.swing.JCheckBox jCheckBox8;
-    private javax.swing.JCheckBox jCheckBox9;
+    private javax.swing.JComboBox<String> battleTypeComboBox;
+    private javax.swing.JLabel battleTypeLabel;
+    private javax.swing.JCheckBox canHeal;
+    private javax.swing.JCheckBox canOverrideItems;
+    private javax.swing.JCheckBox canOverrideMoves;
+    private javax.swing.JPanel generalPanel;
+    private javax.swing.JPanel itemsPanel;
+    private javax.swing.JButton jButton1;
     private javax.swing.JCheckBoxMenuItem jCheckBoxMenuItem1;
     private javax.swing.JLabel jLabel1;
-    private javax.swing.JList<String> jList1;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel3;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator3;
-    private javax.swing.JSpinner jSpinner1;
-    private javax.swing.JSpinner jSpinner2;
-    private javax.swing.JSplitPane jSplitPane1;
-    private javax.swing.JTabbedPane jTabbedPane1;
-    private javax.swing.JTabbedPane jTabbedPane3;
     private javax.swing.JTable jTable1;
-    private javax.swing.JTextField jTextField1;
-    private xstandard.gui.components.combobox.ComboBoxAndSpinner zoneDropdown;
-    private javax.swing.JLabel zoneLabel;
+    private javax.swing.JTextField nameEntry;
+    private javax.swing.JPanel partyAndTextPanel;
+    private javax.swing.JTabbedPane partyAndTextTabbedPane;
+    private javax.swing.JPanel partyTab;
+    private javax.swing.JPanel propertiesPanel;
+    private javax.swing.JLabel rewardItemLabel;
+    private javax.swing.JSpinner rewardItemSpinner;
+    private javax.swing.JLabel rewardMoneyLabel;
+    private javax.swing.JSpinner rewardMoneySpinner;
+    private javax.swing.JPanel rewardsPanel;
+    private javax.swing.JLabel settingsLabel;
+    private javax.swing.JPanel textTab;
+    private javax.swing.JList<String> trainerClassList;
+    private javax.swing.JLabel trainerLabel;
+    private xstandard.gui.components.combobox.ComboBoxAndSpinner trainerSelector;
     // End of variables declaration//GEN-END:variables
 }
