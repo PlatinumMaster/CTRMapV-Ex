@@ -87,10 +87,6 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
                         return;
                     }
                     GetCurrentTrainer().SetAssignedClass(SelIndex);
-//                    trainerSelector.setEditable(true);
-//                    trainerSelector.getCB().getEditor().setItem(String.format("%s %s", TrClasses.getLine(GetCurrentTrainer().GetAssignedClass()), 
-//                    TrNames.getLine(TrIndex)));
-//                    trainerSelector.setEditable(false);
                 }         
             }
         });
@@ -238,7 +234,6 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
         battleTypeComboBox.setModel(BattleTypeModel);
     }
             
-    
     TextFile LoadSystemTextArchive(int Index) {
 	return new TextFile(FS().NARCGet(NARCRef.MSGDATA_SYSTEM, Index), GenVMessageHandler.INSTANCE);
     }
@@ -295,13 +290,32 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
         jSeparator1 = new javax.swing.JSeparator();
         trainerLabel = new javax.swing.JLabel();
         trainerSelector = new xstandard.gui.components.combobox.ComboBoxAndSpinner();
-        partyAndTextPanel = new javax.swing.JPanel();
-        partyAndTextTabbedPane = new javax.swing.JTabbedPane();
-        partyTab = new javax.swing.JPanel();
-        textTab = new javax.swing.JPanel();
-        jSeparator3 = new javax.swing.JSeparator();
-        jScrollPane3 = new javax.swing.JScrollPane();
-        jTable1 = new javax.swing.JTable();
+        jPanel1 = new javax.swing.JPanel();
+        jTabbedPane3 = new javax.swing.JTabbedPane();
+        jPanel5 = new javax.swing.JPanel();
+        jPanel4 = new javax.swing.JPanel();
+        jTabbedPane4 = new javax.swing.JTabbedPane();
+        jPanel6 = new javax.swing.JPanel();
+        jLabel4 = new javax.swing.JLabel();
+        battleTypeComboBox1 = new javax.swing.JComboBox<>();
+        areaLabel2 = new javax.swing.JLabel();
+        AIConfigurationInteger1 = new javax.swing.JSpinner();
+        areaLabel3 = new javax.swing.JLabel();
+        AIConfigurationInteger2 = new javax.swing.JSpinner();
+        battleTypeComboBox2 = new javax.swing.JComboBox<>();
+        areaLabel4 = new javax.swing.JLabel();
+        areaLabel5 = new javax.swing.JLabel();
+        battleTypeComboBox3 = new javax.swing.JComboBox<>();
+        areaLabel6 = new javax.swing.JLabel();
+        AIConfigurationInteger3 = new javax.swing.JSpinner();
+        areaLabel7 = new javax.swing.JLabel();
+        battleTypeComboBox4 = new javax.swing.JComboBox<>();
+        itemsPanel3 = new javax.swing.JPanel();
+        Item1ComboBox3 = new javax.swing.JComboBox<>();
+        Item2ComboBox9 = new javax.swing.JComboBox<>();
+        Item3ComboBox3 = new javax.swing.JComboBox<>();
+        Item4ComboBox3 = new javax.swing.JComboBox<>();
+        areaLabel9 = new javax.swing.JLabel();
 
         jCheckBoxMenuItem1.setSelected(true);
         jCheckBoxMenuItem1.setText("jCheckBoxMenuItem1");
@@ -366,7 +380,7 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
                         .addComponent(AIRivalCheckbox, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(AIUnused2Checkbox, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(12, Short.MAX_VALUE))
+                .addContainerGap(40, Short.MAX_VALUE))
         );
 
         aiPanelLayout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {AIBasicCheckbox, AIWillAttackCheckbox});
@@ -384,14 +398,15 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
                     .addComponent(AIRivalCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(AIUnused2Checkbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(aiPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(AIUnused3Checkbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(AIMultiBattleCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(aiPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(aiPanelLayout.createSequentialGroup()
                         .addGroup(aiPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(AIConfigurationIntegerLabel)
                             .addComponent(AIConfigurationInteger, javax.swing.GroupLayout.PREFERRED_SIZE, 19, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addContainerGap(12, Short.MAX_VALUE))))
+                        .addContainerGap())
+                    .addGroup(aiPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(AIUnused3Checkbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(AIMultiBattleCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
         );
 
         itemsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Items"));
@@ -415,11 +430,11 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
             .addGroup(itemsPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(itemsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(Item3ComboBox, 0, 121, Short.MAX_VALUE)
+                    .addComponent(Item3ComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(Item1ComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(itemsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(Item2ComboBox, 0, 121, Short.MAX_VALUE)
+                    .addComponent(Item2ComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(Item4ComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
@@ -433,7 +448,7 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
                 .addGroup(itemsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(Item3ComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(Item4ComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(8, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         generalPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("General"));
@@ -498,46 +513,54 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
                             .addComponent(jScrollPane1)
                             .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, 139, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 132, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(nameEntry, javax.swing.GroupLayout.PREFERRED_SIZE, 132, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addGap(18, 18, 18)
+                        .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, 138, Short.MAX_VALUE)
+                            .addComponent(nameEntry))))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(canOverrideMoves)
-                    .addComponent(canOverrideItems)
-                    .addComponent(canHeal)
-                    .addComponent(settingsLabel)
-                    .addComponent(battleTypeLabel)
-                    .addComponent(battleTypeComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, 132, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(25, Short.MAX_VALUE))
+                    .addComponent(canOverrideMoves, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(generalPanelLayout.createSequentialGroup()
+                        .addComponent(canOverrideItems, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGap(4, 4, 4))
+                    .addGroup(generalPanelLayout.createSequentialGroup()
+                        .addComponent(canHeal, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGap(5, 5, 5))
+                    .addGroup(generalPanelLayout.createSequentialGroup()
+                        .addComponent(settingsLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGap(88, 88, 88))
+                    .addGroup(generalPanelLayout.createSequentialGroup()
+                        .addComponent(battleTypeLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGap(71, 71, 71))
+                    .addComponent(battleTypeComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
         generalPanelLayout.setVerticalGroup(
             generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(generalPanelLayout.createSequentialGroup()
                 .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(generalPanelLayout.createSequentialGroup()
-                        .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(areaLabel)
-                            .addComponent(settingsLabel))
+                        .addComponent(areaLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
+                    .addGroup(generalPanelLayout.createSequentialGroup()
+                        .addComponent(settingsLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)))
-                    .addGroup(generalPanelLayout.createSequentialGroup()
-                        .addGap(21, 21, 21)
-                        .addComponent(canHeal)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(canOverrideItems)
-                        .addGap(6, 6, 6)
-                        .addComponent(canOverrideMoves)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 9, Short.MAX_VALUE)
-                        .addComponent(battleTypeLabel)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(battleTypeComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addGroup(generalPanelLayout.createSequentialGroup()
+                                .addComponent(canHeal)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(canOverrideItems)
+                                .addGap(6, 6, 6)
+                                .addComponent(canOverrideMoves)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 9, Short.MAX_VALUE)
+                                .addComponent(battleTypeLabel)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(battleTypeComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(nameEntry, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jButton1))
+                    .addComponent(jButton1)
+                    .addComponent(nameEntry, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(6, 6, 6))
         );
 
@@ -587,27 +610,25 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
             propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(propertiesPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(aiPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                        .addGroup(propertiesPanelLayout.createSequentialGroup()
-                            .addComponent(itemsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(rewardsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addComponent(generalPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(propertiesPanelLayout.createSequentialGroup()
+                        .addComponent(itemsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(rewardsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(generalPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(aiPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
         propertiesPanelLayout.setVerticalGroup(
             propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(propertiesPanelLayout.createSequentialGroup()
-                .addContainerGap()
                 .addComponent(generalPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(3, 3, 3)
-                .addGroup(propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(itemsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(rewardsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(aiPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addGroup(propertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(rewardsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(itemsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(aiPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -617,81 +638,238 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
         trainerSelector.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
         trainerSelector.setMaximumRowCount(35);
 
-        partyAndTextPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Other"));
+        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Party & Trainer Text Table"));
 
-        partyAndTextTabbedPane.setToolTipText("");
-        partyAndTextTabbedPane.setFont(new java.awt.Font("Droid Sans", 0, 14)); // NOI18N
+        jTabbedPane3.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
 
-        javax.swing.GroupLayout partyTabLayout = new javax.swing.GroupLayout(partyTab);
-        partyTab.setLayout(partyTabLayout);
-        partyTabLayout.setHorizontalGroup(
-            partyTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 548, Short.MAX_VALUE)
+        javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
+        jPanel5.setLayout(jPanel5Layout);
+        jPanel5Layout.setHorizontalGroup(
+            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 0, Short.MAX_VALUE)
         );
-        partyTabLayout.setVerticalGroup(
-            partyTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 376, Short.MAX_VALUE)
+        jPanel5Layout.setVerticalGroup(
+            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 0, Short.MAX_VALUE)
         );
 
-        partyAndTextTabbedPane.addTab("Party", partyTab);
+        jTabbedPane3.addTab("Trainer Text Table", jPanel5);
 
-        jTable1.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null},
-                {null, null},
-                {null, null},
-                {null, null}
-            },
-            new String [] {
-                "Message Type", "Index"
-            }
-        ) {
-            Class[] types = new Class [] {
-                java.lang.Object.class, java.lang.Integer.class
-            };
+        jTabbedPane4.setBorder(javax.swing.BorderFactory.createTitledBorder("Pkmn"));
 
-            public Class getColumnClass(int columnIndex) {
-                return types [columnIndex];
-            }
-        });
-        jScrollPane3.setViewportView(jTable1);
+        jPanel6.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
 
-        javax.swing.GroupLayout textTabLayout = new javax.swing.GroupLayout(textTab);
-        textTab.setLayout(textTabLayout);
-        textTabLayout.setHorizontalGroup(
-            textTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, textTabLayout.createSequentialGroup()
+        jLabel4.setBackground(new java.awt.Color(102, 102, 102));
+        jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel4.setText("Preview Here");
+        jLabel4.setOpaque(true);
+
+        battleTypeComboBox1.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        battleTypeComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+
+        areaLabel2.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        areaLabel2.setText("Level");
+
+        AIConfigurationInteger1.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+
+        areaLabel3.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        areaLabel3.setText("Form");
+
+        AIConfigurationInteger2.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+
+        battleTypeComboBox2.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        battleTypeComboBox2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+
+        areaLabel4.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        areaLabel4.setText("Ability");
+
+        areaLabel5.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        areaLabel5.setText("Gender");
+
+        battleTypeComboBox3.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        battleTypeComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+
+        areaLabel6.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        areaLabel6.setText("IVs");
+
+        AIConfigurationInteger3.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+
+        areaLabel7.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        areaLabel7.setText("Held Item");
+
+        battleTypeComboBox4.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        battleTypeComboBox4.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+
+        itemsPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("Items"));
+
+        Item1ComboBox3.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        Item1ComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+
+        Item2ComboBox9.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        Item2ComboBox9.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+
+        Item3ComboBox3.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        Item3ComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+
+        Item4ComboBox3.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        Item4ComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Disabled", "Enabled", "Used" }));
+
+        javax.swing.GroupLayout itemsPanel3Layout = new javax.swing.GroupLayout(itemsPanel3);
+        itemsPanel3.setLayout(itemsPanel3Layout);
+        itemsPanel3Layout.setHorizontalGroup(
+            itemsPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(itemsPanel3Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(textTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jSeparator3, javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 536, Short.MAX_VALUE))
-                .addContainerGap())
-        );
-        textTabLayout.setVerticalGroup(
-            textTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, textTabLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE)
+                .addGroup(itemsPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(Item3ComboBox3, 0, 112, Short.MAX_VALUE)
+                    .addComponent(Item1ComboBox3, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jSeparator3, javax.swing.GroupLayout.DEFAULT_SIZE, 14, Short.MAX_VALUE)
-                .addGap(40, 40, 40))
-        );
-
-        partyAndTextTabbedPane.addTab("Text Table", textTab);
-
-        javax.swing.GroupLayout partyAndTextPanelLayout = new javax.swing.GroupLayout(partyAndTextPanel);
-        partyAndTextPanel.setLayout(partyAndTextPanelLayout);
-        partyAndTextPanelLayout.setHorizontalGroup(
-            partyAndTextPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(partyAndTextPanelLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(partyAndTextTabbedPane)
+                .addGroup(itemsPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(Item2ComboBox9, 0, 112, Short.MAX_VALUE)
+                    .addComponent(Item4ComboBox3, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
-        partyAndTextPanelLayout.setVerticalGroup(
-            partyAndTextPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(partyAndTextPanelLayout.createSequentialGroup()
-                .addComponent(partyAndTextTabbedPane, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+        itemsPanel3Layout.setVerticalGroup(
+            itemsPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(itemsPanel3Layout.createSequentialGroup()
+                .addGroup(itemsPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addGroup(itemsPanel3Layout.createSequentialGroup()
+                        .addComponent(Item2ComboBox9, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(6, 6, 6)
+                        .addComponent(Item4ComboBox3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(itemsPanel3Layout.createSequentialGroup()
+                        .addComponent(Item1ComboBox3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(6, 6, 6)
+                        .addComponent(Item3ComboBox3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        areaLabel9.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        areaLabel9.setText("Species");
+
+        javax.swing.GroupLayout jPanel6Layout = new javax.swing.GroupLayout(jPanel6);
+        jPanel6.setLayout(jPanel6Layout);
+        jPanel6Layout.setHorizontalGroup(
+            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel6Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 159, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(jPanel6Layout.createSequentialGroup()
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel6Layout.createSequentialGroup()
+                                .addComponent(areaLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGap(40, 40, 40))
+                            .addGroup(jPanel6Layout.createSequentialGroup()
+                                .addComponent(areaLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGap(36, 36, 36))
+                            .addGroup(jPanel6Layout.createSequentialGroup()
+                                .addComponent(areaLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel6Layout.createSequentialGroup()
+                                .addComponent(AIConfigurationInteger1, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(areaLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(AIConfigurationInteger2, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(6, 6, 6))
+                            .addGroup(jPanel6Layout.createSequentialGroup()
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(battleTypeComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(battleTypeComboBox2, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(0, 0, Short.MAX_VALUE))))
+                    .addGroup(jPanel6Layout.createSequentialGroup()
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(areaLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addGroup(jPanel6Layout.createSequentialGroup()
+                                .addComponent(areaLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGap(22, 22, 22)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel6Layout.createSequentialGroup()
+                                .addComponent(battleTypeComboBox3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(areaLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(AIConfigurationInteger3, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(battleTypeComboBox4, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(itemsPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+        );
+        jPanel6Layout.setVerticalGroup(
+            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel6Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(jPanel6Layout.createSequentialGroup()
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(areaLabel9)
+                            .addComponent(battleTypeComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(areaLabel2)
+                            .addComponent(areaLabel3)
+                            .addComponent(AIConfigurationInteger2, javax.swing.GroupLayout.PREFERRED_SIZE, 19, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(AIConfigurationInteger1, javax.swing.GroupLayout.PREFERRED_SIZE, 19, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                            .addComponent(areaLabel4)
+                            .addComponent(battleTypeComboBox2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(10, 10, 10)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(areaLabel7)
+                            .addComponent(battleTypeComboBox4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(battleTypeComboBox3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(areaLabel5)
+                            .addComponent(areaLabel6)
+                            .addComponent(AIConfigurationInteger3, javax.swing.GroupLayout.PREFERRED_SIZE, 19, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 141, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(itemsPanel3, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        jPanel6Layout.linkSize(javax.swing.SwingConstants.VERTICAL, new java.awt.Component[] {AIConfigurationInteger1, AIConfigurationInteger2, battleTypeComboBox1});
+
+        javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
+        jPanel4.setLayout(jPanel4Layout);
+        jPanel4Layout.setHorizontalGroup(
+            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel4Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jTabbedPane4)
+                    .addComponent(jPanel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
+        );
+        jPanel4Layout.setVerticalGroup(
+            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel4Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jTabbedPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 58, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jPanel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(152, Short.MAX_VALUE))
+        );
+
+        jTabbedPane3.addTab("Party", jPanel4);
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jTabbedPane3))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addComponent(jTabbedPane3)
                 .addContainerGap())
         );
 
@@ -705,15 +883,16 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
                 .addComponent(trainerSelector, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jSeparator1)
+                        .addGap(22, 22, 22))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(propertiesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(partyAndTextPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jSeparator1)))
-                .addGap(22, 22, 22))
+                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap(12, Short.MAX_VALUE))))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -726,9 +905,9 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
                 .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(propertiesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(partyAndTextPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap())
+                    .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(propertiesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(12, 12, 12))
         );
 
         propertiesPanel.getAccessibleContext().setAccessibleName("0");
@@ -752,6 +931,9 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
     private javax.swing.JCheckBox AIAdvancedCheckbox;
     private javax.swing.JCheckBox AIBasicCheckbox;
     private javax.swing.JSpinner AIConfigurationInteger;
+    private javax.swing.JSpinner AIConfigurationInteger1;
+    private javax.swing.JSpinner AIConfigurationInteger2;
+    private javax.swing.JSpinner AIConfigurationInteger3;
     private javax.swing.JLabel AIConfigurationIntegerLabel;
     private javax.swing.JCheckBox AIMultiBattleCheckbox;
     private javax.swing.JCheckBox AIRivalCheckbox;
@@ -760,30 +942,47 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
     private javax.swing.JCheckBox AIUnusedCheckbox;
     private javax.swing.JCheckBox AIWillAttackCheckbox;
     private javax.swing.JComboBox<String> Item1ComboBox;
+    private javax.swing.JComboBox<String> Item1ComboBox3;
     private javax.swing.JComboBox<String> Item2ComboBox;
+    private javax.swing.JComboBox<String> Item2ComboBox9;
     private javax.swing.JComboBox<String> Item3ComboBox;
+    private javax.swing.JComboBox<String> Item3ComboBox3;
     private javax.swing.JComboBox<String> Item4ComboBox;
+    private javax.swing.JComboBox<String> Item4ComboBox3;
     private javax.swing.JPanel aiPanel;
     private javax.swing.JLabel areaLabel;
+    private javax.swing.JLabel areaLabel2;
+    private javax.swing.JLabel areaLabel3;
+    private javax.swing.JLabel areaLabel4;
+    private javax.swing.JLabel areaLabel5;
+    private javax.swing.JLabel areaLabel6;
+    private javax.swing.JLabel areaLabel7;
+    private javax.swing.JLabel areaLabel9;
     private javax.swing.JComboBox<String> battleTypeComboBox;
+    private javax.swing.JComboBox<String> battleTypeComboBox1;
+    private javax.swing.JComboBox<String> battleTypeComboBox2;
+    private javax.swing.JComboBox<String> battleTypeComboBox3;
+    private javax.swing.JComboBox<String> battleTypeComboBox4;
     private javax.swing.JLabel battleTypeLabel;
     private javax.swing.JCheckBox canHeal;
     private javax.swing.JCheckBox canOverrideItems;
     private javax.swing.JCheckBox canOverrideMoves;
     private javax.swing.JPanel generalPanel;
     private javax.swing.JPanel itemsPanel;
+    private javax.swing.JPanel itemsPanel3;
     private javax.swing.JButton jButton1;
     private javax.swing.JCheckBoxMenuItem jCheckBoxMenuItem1;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel4;
+    private javax.swing.JPanel jPanel5;
+    private javax.swing.JPanel jPanel6;
     private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JSeparator jSeparator1;
-    private javax.swing.JSeparator jSeparator3;
-    private javax.swing.JTable jTable1;
+    private javax.swing.JTabbedPane jTabbedPane3;
+    private javax.swing.JTabbedPane jTabbedPane4;
     private javax.swing.JTextField nameEntry;
-    private javax.swing.JPanel partyAndTextPanel;
-    private javax.swing.JTabbedPane partyAndTextTabbedPane;
-    private javax.swing.JPanel partyTab;
     private javax.swing.JPanel propertiesPanel;
     private javax.swing.JLabel rewardItemLabel;
     private javax.swing.JSpinner rewardItemSpinner;
@@ -791,7 +990,6 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
     private javax.swing.JSpinner rewardMoneySpinner;
     private javax.swing.JPanel rewardsPanel;
     private javax.swing.JLabel settingsLabel;
-    private javax.swing.JPanel textTab;
     private javax.swing.JList<String> trainerClassList;
     private javax.swing.JLabel trainerLabel;
     private xstandard.gui.components.combobox.ComboBoxAndSpinner trainerSelector;
