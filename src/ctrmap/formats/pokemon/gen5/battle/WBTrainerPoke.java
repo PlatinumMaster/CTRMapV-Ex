@@ -3,6 +3,7 @@ package ctrmap.formats.pokemon.gen5.battle;
 
 import java.io.DataInput;
 import java.io.IOException;
+import xstandard.io.base.impl.ext.data.DataIOStream;
 
 public class WBTrainerPoke {
     final int MOVES_COUNT = 0x4;
@@ -22,12 +23,10 @@ public class WBTrainerPoke {
         Level = in.readUnsignedShort();
         Species = in.readUnsignedShort();
         Form = in.readUnsignedShort();
-        Item = CanOverrideItem ? in.readUnsignedShort() : -1;
-        
-        if (CanOverrideMoves) {
-            for (int Index = 0; Index < MOVES_COUNT; ++Index) {
-                Moves[Index] = in.readUnsignedShort();
-            }
+        Item = CanOverrideItem ? in.readUnsignedShort() : 0;
+        Moves = new Integer[MOVES_COUNT];
+        for (int Index = 0; Index < MOVES_COUNT; ++Index) {
+            Moves[Index] = CanOverrideMoves ? in.readUnsignedShort() : 0;
         }
     }
     
@@ -100,5 +99,21 @@ public class WBTrainerPoke {
             return;
         }
         this.Moves[Index] = NewMove;
+    }
+
+    void Serialize(DataIOStream TrPokeStrm, boolean OverrideItem, boolean OverrideMoves) throws IOException {
+        TrPokeStrm.writeByte(this.IVs);
+        TrPokeStrm.writeByte((this.Ability << 0x4) | (this.Gender));
+        TrPokeStrm.writeShort(Level);
+        TrPokeStrm.writeShort(Species);
+        TrPokeStrm.writeShort(Form);
+        if (OverrideItem) {
+            TrPokeStrm.writeShort(this.Item);
+        }
+        if (OverrideMoves) {
+            for (int Index = 0; Index < MOVES_COUNT; ++Index) {
+                TrPokeStrm.writeShort(this.Moves[Index]);
+            }
+        }
     }
 }

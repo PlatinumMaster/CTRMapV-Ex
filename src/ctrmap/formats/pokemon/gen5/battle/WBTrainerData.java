@@ -4,6 +4,9 @@ package ctrmap.formats.pokemon.gen5.battle;
 import java.io.DataInput;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.logging.Logger;
+import xstandard.fs.FSFile;
+import xstandard.io.base.impl.ext.data.DataIOStream;
 
 public class WBTrainerData {
     public static final short ITEMS_COUNT_MAX = 0x4;
@@ -136,6 +139,46 @@ public class WBTrainerData {
         int Sh = Value;
         for (int Index = 0; Sh > 0 || Index < Integer.SIZE; ++Index, Sh >>>= 1) {
             this.AI[Index] = (Sh & 1) == 1;
+        }
+    }
+    
+    public int GetPkmnSize() {
+        return this.TrPoke.size();
+    }
+    
+    public WBTrainerPoke GetPkmn(int Index) {
+        return Index < GetPkmnSize() ? this.TrPoke.get(Index) : null;
+    }
+    
+    public void Serialize(FSFile TrDat, FSFile TrPoke) {
+        try {			
+            DataIOStream TrDatStrm = TrDat.getDataIOStream();
+
+            TrDatStrm.writeByte(((this.OverrideHeldItem ? 1 : 0) << 1) | (this.OverrideMoves ? 1 : 0));
+            TrDatStrm.writeByte(this.AssignedClass);
+            TrDatStrm.writeByte(this.BattleType);
+            
+            TrDatStrm.writeByte(this.GetPkmnSize());
+
+            for (int Index = 0; Index < ITEMS_COUNT_MAX; ++Index) {
+                TrDatStrm.writeShort(this.Items[Index]);
+            }
+
+            TrDatStrm.writeInt(this.GetAIValue());
+
+            if (this.GetPkmnSize() > 0) {
+                DataIOStream TrPokeStrm = TrPoke.getDataIOStream();
+                TrDatStrm.writeByte(this.CanHeal ? 1 : 0);
+                TrDatStrm.writeByte(this.Money);
+                TrDatStrm.writeByte(this.Prize); 
+                for (WBTrainerPoke Entry : this.TrPoke) {
+                    Entry.Serialize(TrPokeStrm, this.CanOverrideHeldItem(), this.CanOverrideMoves());
+                }
+                TrPokeStrm.close();
+            }
+
+            TrDatStrm.close();
+        } catch (IOException ex) {
         }
     }
 }
