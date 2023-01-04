@@ -2,7 +2,8 @@
 import ctrmap.CTRMapVResources;
 import ctrmap.Launc;
 import ctrmap.editor.CTRMapMenuActions;
-import ctrmap.editor.gui.editors.gen5.battle.VTrainerEditor;
+import ctrmap.editor.gui.editors.gen5.battle.encounters.VWildEditor;
+import ctrmap.editor.gui.editors.gen5.battle.trainer.VTrainerEditor;
 import ctrmap.editor.gui.editors.gen5.level.VLevelEditor;
 import ctrmap.editor.gui.editors.gen5.level.VZoneEditor;
 import ctrmap.editor.gui.editors.gen5.level.building.VPropEditor;
@@ -72,7 +73,8 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 			VZoneEditor.class,
 			VEventEditor.class,
 			VExtrasPanel.class,
-                        VTrainerEditor.class
+                        VTrainerEditor.class,
+                        VWildEditor.class
 		);
 	}
 

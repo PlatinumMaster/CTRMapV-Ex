@@ -1,12 +1,12 @@
-package ctrmap.editor.gui.editors.gen5.battle;
+package ctrmap.editor.gui.editors.gen5.battle.trainer;
 
 import ctrmap.editor.CTRMap;
 import ctrmap.editor.gui.editors.common.AbstractTabbedEditor;
 import ctrmap.editor.gui.editors.text.loaders.ITextArcType;
 import ctrmap.editor.system.workspace.CTRMapProject;
 import ctrmap.formats.common.GameInfo;
-import ctrmap.formats.pokemon.gen5.battle.WBTrainerData;
-import ctrmap.formats.pokemon.gen5.battle.WBTrainerPoke;
+import ctrmap.formats.pokemon.gen5.battle.trainer.WBTrainerData;
+import ctrmap.formats.pokemon.gen5.battle.trainer.WBTrainerPoke;
 import ctrmap.formats.pokemon.text.GenVMessageHandler;
 import ctrmap.formats.pokemon.text.MessageHandler;
 import ctrmap.formats.pokemon.text.MsgStr;

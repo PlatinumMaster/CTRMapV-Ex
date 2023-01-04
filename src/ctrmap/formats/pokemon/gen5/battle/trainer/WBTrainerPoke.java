@@ -1,5 +1,5 @@
 
-package ctrmap.formats.pokemon.gen5.battle;
+package ctrmap.formats.pokemon.gen5.battle.trainer;
 
 import java.io.DataInput;
 import java.io.IOException;
@@ -11,7 +11,7 @@ public class WBTrainerPoke {
     int IVs, Ability, Gender, Level, Species, Form, Item;
     
     public WBTrainerPoke() {
-        Moves = new Integer[MOVES_COUNT];
+        Moves = new Integer[]{0, 0, 0, 0} ;
     }
     
     public WBTrainerPoke(DataInput in, boolean CanOverrideMoves, boolean CanOverrideItem) throws IOException {

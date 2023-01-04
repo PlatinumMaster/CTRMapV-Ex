@@ -1,4 +1,4 @@
-package ctrmap.editor.gui.editors.gen5.level.entities;
+    package ctrmap.editor.gui.editors.gen5.level.entities;
 
 import ctrmap.editor.CTRMap;
 import ctrmap.editor.gui.editors.common.AbstractTabbedEditor;
