@@ -121,70 +121,7 @@ public class VEventEditor extends javax.swing.JPanel implements AbstractTabbedEd
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        scriptPnl = new javax.swing.JPanel();
-        btnOpenScrInIDE = new javax.swing.JButton();
-        openScrIDEWarning = new javax.swing.JLabel();
-        btnReplaceScripts = new javax.swing.JButton();
-        btnAttemptDecompilerOnOpenScr = new javax.swing.JCheckBox();
-        warnSep = new javax.swing.JSeparator();
-
         textEditor.setBorder(javax.swing.BorderFactory.createTitledBorder("Texts"));
-
-        scriptPnl.setBorder(javax.swing.BorderFactory.createTitledBorder("Scripts"));
-
-        btnOpenScrInIDE.setText("Open in IDE");
-        btnOpenScrInIDE.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnOpenScrInIDEActionPerformed(evt);
-            }
-        });
-
-        openScrIDEWarning.setForeground(new java.awt.Color(255, 0, 0));
-        openScrIDEWarning.setText("Warning: This can permanently destroy non-user-coded scripts. Proceed with caution.");
-
-        btnReplaceScripts.setText("Replace script file");
-        btnReplaceScripts.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnReplaceScriptsActionPerformed(evt);
-            }
-        });
-
-        btnAttemptDecompilerOnOpenScr.setSelected(true);
-        btnAttemptDecompilerOnOpenScr.setText("Attempt to decompile");
-
-        warnSep.setOrientation(javax.swing.SwingConstants.VERTICAL);
-
-        javax.swing.GroupLayout scriptPnlLayout = new javax.swing.GroupLayout(scriptPnl);
-        scriptPnl.setLayout(scriptPnlLayout);
-        scriptPnlLayout.setHorizontalGroup(
-            scriptPnlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(scriptPnlLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(scriptPnlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(btnReplaceScripts, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(btnOpenScrInIDE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(btnAttemptDecompilerOnOpenScr)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(warnSep, javax.swing.GroupLayout.PREFERRED_SIZE, 2, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(openScrIDEWarning)
-                .addContainerGap(97, Short.MAX_VALUE))
-        );
-        scriptPnlLayout.setVerticalGroup(
-            scriptPnlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(scriptPnlLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(scriptPnlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(openScrIDEWarning, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(warnSep)
-                    .addGroup(scriptPnlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(btnOpenScrInIDE)
-                        .addComponent(btnAttemptDecompilerOnOpenScr)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(btnReplaceScripts)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -192,31 +129,17 @@ public class VEventEditor extends javax.swing.JPanel implements AbstractTabbedEd
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(textEditor, javax.swing.GroupLayout.DEFAULT_SIZE, 786, Short.MAX_VALUE)
-                    .addComponent(scriptPnl, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addComponent(textEditor, javax.swing.GroupLayout.DEFAULT_SIZE, 849, Short.MAX_VALUE)
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(scriptPnl, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(textEditor, javax.swing.GroupLayout.DEFAULT_SIZE, 409, Short.MAX_VALUE)
+                .addComponent(textEditor, javax.swing.GroupLayout.DEFAULT_SIZE, 502, Short.MAX_VALUE)
                 .addContainerGap())
         );
     }// </editor-fold>//GEN-END:initComponents
-
-    private void btnReplaceScriptsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnReplaceScriptsActionPerformed
-		if (zone != null) {
-			FSFile f = XFileDialog.openFileDialog();
-
-			if (f != null) {
-				FSUtil.copy(f, zone.scripts.getSourceFile());
-			}
-		}
-    }//GEN-LAST:event_btnReplaceScriptsActionPerformed
 
 	private class ZoneScriptsIDEProjectListener implements IDEProjectListener {
 
@@ -230,22 +153,22 @@ public class VEventEditor extends javax.swing.JPanel implements AbstractTabbedEd
 		public void onMainClassChanged(IDEFile newMainClass) {
 			System.out.println("Project main class changed to " + newMainClass);
 			changeWorkMainClass(newMainClass);
-			onSaved(FileEditorRSTA.SaveResult.SAVED);
+//			onSaved(FileEditorRSTA.SaveResult.SAVED);
 		}
 
 		@Override
 		public void onSaved(FileEditorRSTA.SaveResult result) {
-			if (result != FileEditorRSTA.SaveResult.CANCELLED && lastMainClass != null) {
-				IDEFile f = lastMainClass;
-				Preprocessor pp = f.getCompiler();
-				if (pp.isCompileSuccessful()) {
-					NCompileGraph cg = f.getCompiler().getCompileGraph();
-					if (cg != null) {
-						VExecMaker.compileVScript(cg, file);
-						file.write();
-					}
-				}
-			}
+//                    if (result != FileEditorRSTA.SaveResult.CANCELLED && lastMainClass != null) {
+//                            IDEFile f = lastMainClass;
+//                            Preprocessor pp = f.getCompiler();
+//                            if (pp.isCompileSuccessful()) {
+//                                    NCompileGraph cg = f.getCompiler().getCompileGraph();
+//                                    if (cg != null) {
+//                                            VExecMaker.compileVScript(cg, file);
+//                                            file.write();
+//                                    }
+//                            }
+//                    }
 		}
 	}
 
@@ -268,62 +191,14 @@ public class VEventEditor extends javax.swing.JPanel implements AbstractTabbedEd
 		}
 	}
 
-    private void btnOpenScrInIDEActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenScrInIDEActionPerformed
-		if (zone != null) {
-			CTRMapIDEHelper.ProjectSetupParam psp;
-			if (btnAttemptDecompilerOnOpenScr.isSelected()) {
-				psp = new CTRMapIDEHelper.ZoneEventProjectSetupParam5Decomp(
-					zone.id, 
-					zone.header.textFileID,
-					zone.scripts,
-					FieldScriptConfigurator.ScriptPluginConfig.getOverlayIDs(ctrl.scrConfigs.getCfgForZone(zone.id)),
-					cm.getGame(),
-					cm.ideHelper
-				);
-			} else {
-				psp = new CTRMapIDEHelper.ZoneEventProjectSetupParam5(zone.id, zone.header.textFileID, cm.getGame());
-			}
-			msgIdMgr.updateIncludeByTag(new ITextAliasManager.MessageTag(VTextLoader.ArcType.SCRIPT_MSG, zone.header.textFileID, -1));
-			IDEProject project = cm.ideHelper.getOrCreateProject(psp);
-
-			PSIDE ide = cm.ideHelper.getIDE();
-			ide.openProject(project);
-
-			Dependency dep = new Dependency(DependencyType.DIRECTORY);
-			dep.ref = new IDEResourceReference(ResourcePathType.ON_DISK, cm.getProject().userData.getUserDataDir(UserData.UsrDirectory.SCRIPT_INCLUDE).getPath());
-			project.addDependency(ide.context, dep);
-
-			ide.resyncProject(project);
-			IDEFile mainClass = project.getMainClass();
-
-			if (mainClass != null) {
-				ide.openFile(mainClass);
-				mainClass = ide.getAlreadyOpenedFile(mainClass);
-			} else {
-				System.out.println("Warn: project has no main class.");
-			}
-
-			changeWorkMainClass(mainClass);
-			changeWorkProject(project);
-
-			ide.setVisible(true);
-		}
-    }//GEN-LAST:event_btnOpenScrInIDEActionPerformed
-
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JCheckBox btnAttemptDecompilerOnOpenScr;
-    private javax.swing.JButton btnOpenScrInIDE;
-    private javax.swing.JButton btnReplaceScripts;
-    private javax.swing.JLabel openScrIDEWarning;
-    private javax.swing.JPanel scriptPnl;
     public final ctrmap.editor.gui.editors.text.TextEditor textEditor = new ctrmap.editor.gui.editors.text.TextEditor();
-    private javax.swing.JSeparator warnSep;
     // End of variables declaration//GEN-END:variables
 
 	@Override
 	public String getTabName() {
-		return "Event Editor";
+		return "Text Editor";
 	}
 
 	@Override
