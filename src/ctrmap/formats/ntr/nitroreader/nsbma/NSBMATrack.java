@@ -13,17 +13,16 @@ import ctrmap.renderer.scene.texturing.MaterialColorType;
 import xstandard.math.vec.RGBA;
 import xstandard.util.collections.IntList;
 import java.io.IOException;
-import xstandard.math.BitMath;
 
 public class NSBMATrack {
 
 	public final String materialName;
 
-	private NSBMAChannel diffuse;
-	private NSBMAChannel ambient;
-	private NSBMAChannel specular;
-	private NSBMAChannel emission;
-	private NSBMAChannel alpha;
+	public final NSBMAChannel diffuse;
+	public final NSBMAChannel ambient;
+	public final NSBMAChannel specular;
+	public final NSBMAChannel emission;
+	public final NSBMAChannel alpha;
 
 	public NSBMATrack(NTRDataIOStream data, int frameCount, NNSPatriciaTreeReader.Entry header) throws IOException {
 		this.materialName = header.getName();
@@ -117,7 +116,7 @@ public class NSBMATrack {
 		}
 	}
 
-	private static class NSBMAChannel {
+	public static class NSBMAChannel {
 
 		public int step;
 		public IntList values;

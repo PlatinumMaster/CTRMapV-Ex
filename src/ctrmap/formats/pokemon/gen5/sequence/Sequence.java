@@ -12,9 +12,6 @@ import ctrmap.formats.pokemon.gen5.sequence.commands.SeqCommandObject;
 import ctrmap.formats.pokemon.gen5.sequence.commands.SeqCommandObjectFactory;
 import ctrmap.formats.pokemon.gen5.sequence.rel.RelocatableSequence;
 
-/**
- *
- */
 public class Sequence {
 	
 	public int seqId;

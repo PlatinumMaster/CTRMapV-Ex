@@ -8,8 +8,8 @@ import ctrmap.renderer.util.MaterialProcessor;
 import ctrmap.renderer.scene.texturing.Texture;
 import xstandard.fs.FSFile;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import xstandard.io.base.iface.IOStream;
@@ -59,7 +59,7 @@ public class NSBMD extends NNSG3DResource {
 
 	public G3DResource toGeneric(NSBMDImportSettings settings) {
 		G3DResource res = new G3DResource();
-		List<String> convertedTextures = new ArrayList<>();
+		Set<String> convertedTextures = new HashSet<>();
 		for (NSBMDModel mdl : MDL0.getModels()) {
 			res.addModel(mdl.toGeneric(settings));
 
@@ -76,6 +76,10 @@ public class NSBMD extends NNSG3DResource {
 					}
 				}
 			}
+		}
+		
+		if (TEX0 != null) {
+			TEX0.toGeneric(res); //convert unreferenced textures (may be used by animations, not entirely accurate)
 		}
 
 		MaterialProcessor.setAutoAlphaBlendByTexture(res);

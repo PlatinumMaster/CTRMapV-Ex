@@ -59,16 +59,31 @@ public class VFieldLightSystem {
 		skyBgModel.name = "ClearColorPlane";
 	}
 
-	public void loadArea(VArea area, VRTC.Season season) {
-		this.season = season;
+	public void loadLights(AreaLightFile lights) {
 		curEntry = null;
-		if (area.header != null) {
-			lightFile = new AreaLightFile(fs.NARCGet(NARCRef.FIELD_ENV_LIGHTS, area.header.lightIndex));
+		if (lights != null) {
+			this.lightFile = lights;
 			interpolator = new Interpolator();
 		} else {
 			lightFile = null;
 			interpolator = null;
 		}
+	}
+	
+	public void loadLights(NARCRef arc, int fileId) {
+		loadLights(new AreaLightFile(fs.NARCGet(arc, fileId)));
+	}
+
+	public void loadArea(VArea area) {
+		if (area.header != null) {
+			loadLights(NARCRef.FIELD_ENV_LIGHTS, area.header.lightIndex);
+		} else {
+			loadLights(null);
+		}
+	}
+	
+	public void setSeason(VRTC.Season season) {
+		this.season = season;
 	}
 
 	private void buildLights() {
@@ -110,13 +125,13 @@ public class VFieldLightSystem {
 		}
 	}
 
-	private static void corruptFixedPointLightVector(Vec3f vec) {
+	public static void corruptFixedPointLightVector(Vec3f vec) {
 		vec.x = corruptFixedPointLightValue(vec.x);
 		vec.y = corruptFixedPointLightValue(vec.y);
 		vec.z = corruptFixedPointLightValue(vec.z);
 	}
 
-	private static float corruptFixedPointLightValue(float value) {
+	public static float corruptFixedPointLightValue(float value) {
 		int fixed = FX.fx(value, 1, 9);
 		float unfixed = FX.unfx(fixed, 1, 9);
 		return unfixed;

@@ -13,7 +13,7 @@ public class NSBMAAnimation implements INamed {
 	public String name;
 	public int frameCount;
 
-	private List<NSBMATrack> tracks;
+	public final List<NSBMATrack> tracks;
 
 	public NSBMAAnimation(NTRDataIOStream data, String name) throws IOException {
 		this.name = name;

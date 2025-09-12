@@ -2,10 +2,15 @@ package ctrmap.formats.ntr.nitroreader.nsbma;
 
 import ctrmap.formats.ntr.common.NTRDataIOStream;
 import ctrmap.formats.ntr.nitroreader.common.NNSG3DResource;
+import ctrmap.renderer.scene.texturing.Material;
 import ctrmap.renderer.scenegraph.G3DResource;
+import ctrmap.renderer.util.MaterialProcessor;
 import xstandard.fs.FSFile;
 import xstandard.io.base.iface.IOStream;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,5 +47,26 @@ public class NSBMA extends NNSG3DResource {
 		G3DResource res = new G3DResource();
 		res.addMatAnimes(MAT0.toGeneric());
 		return res;
+	}
+	
+	public void forceAlphaBlendToMaterialsIfNeeded(List<Material> materials) {
+		Set<String> needAlphaBlendMats = new HashSet<>();
+		
+		for (NSBMAAnimation a : MAT0.animations) {
+			for (NSBMATrack track : a.tracks) {
+				for (int i = 0; i < track.alpha.values.size(); i++) {
+					int alpha = track.alpha.values.get(i);
+					if (alpha != 0 && alpha != 31) {
+						needAlphaBlendMats.add(track.materialName);
+					}
+				}
+			}
+		}
+		
+		for (Material mat : materials) {
+			if (needAlphaBlendMats.contains(mat.name)) {
+				MaterialProcessor.setAlphaBlend(mat);
+			}
+		}
 	}
 }

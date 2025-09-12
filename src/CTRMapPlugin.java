@@ -14,6 +14,8 @@ import ctrmap.editor.gui.editors.gen5.level.entities.VTriggerEditor;
 import ctrmap.editor.gui.editors.gen5.level.entities.VWarpEditor;
 import ctrmap.editor.gui.editors.gen5.level.extra.VExtrasPanel;
 import ctrmap.editor.gui.editors.gen5.level.rail.VRailEditor;
+import ctrmap.editor.gui.editors.gen5.sequence.VSequenceEditor;
+import ctrmap.editor.gui.editors.gen5.sequence.VSequencePlayerEditor;
 import ctrmap.editor.gui.editors.scenegraph.ScenegraphExplorer;
 import ctrmap.editor.gui.workspace.ROMExportDialog;
 import ctrmap.editor.system.juliet.CTRMapPluginInterface;
@@ -52,6 +54,7 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 	@Override
 	public void registPerspectives(CTRMapPluginInterface j) {
 		j.rmoRegistPerspective(VLevelEditor.class);
+		j.rmoRegistPerspective(VSequenceEditor.class);
 	}
 
 	@Override
@@ -71,6 +74,11 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 			VZoneEditor.class,
 			VEventEditor.class,
 			VExtrasPanel.class
+		);
+
+		j.rmoRegistToolbarEditors(VSequenceEditor.class,
+			VSequencePlayerEditor.class,
+			ScenegraphExplorer.class
 		);
 	}
 

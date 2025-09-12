@@ -68,9 +68,12 @@ public class SeqReader {
 	
 	
 	public static void main(String[] args){
-		//SeqReader reader = new SeqReader(new DiskFile("D:\\_REWorkspace\\pokescript_genv\\_CUTSCENE_IDB\\overlay9_293"), 0x21A1BA0, 0x21A6ECC, 27);
-		//reader.dumpRelocatableBinaries(new DiskFile("D:\\_REWorkspace\\pokescript_genv\\_CUTSCENE_IDB\\export_binary"));
-		//reader.dumpYML(new DiskFile("D:\\_REWorkspace\\pokescript_genv\\_CUTSCENE_IDB\\export_yml"));
+		SeqReader reader = new SeqReader(new DiskFile("D:\\_REWorkspace\\pokescript_genv\\_CUTSCENE_IDB\\overlay9_293"), 0x21A1BA0, 0x21A6ECC, 27);
+		reader.dumpRelocatableBinaries(new DiskFile("D:\\_REWorkspace\\pokescript_genv\\_CUTSCENE_IDB\\export_binary"));
+		reader.dumpYML(new DiskFile("D:\\_REWorkspace\\pokescript_genv\\_CUTSCENE_IDB\\export_yml"));
+		if (true) {
+			return;
+		}
 		DiskFile source = new DiskFile("D:\\_REWorkspace\\pokescript_genv\\_CUTSCENE_IDB\\export_yml");
 		DiskFile target = new DiskFile("D:\\Emugames\\DS\\DStools\\NARChive_v1.1\\demo3d_seq_data");
 		DiskFile lfsTarget = new DiskFile("D:\\_REWorkspace\\CTRMapProjects\\White2\\vfs\\data\\demo3d_seq_data.narc");

@@ -8,4 +8,5 @@ public enum VMCModuleLogSource implements McLogger.ILogMsgSource {
 	AUDIO,
 	INPUT,
 	FIELD,
+	SEQUENCE
 }

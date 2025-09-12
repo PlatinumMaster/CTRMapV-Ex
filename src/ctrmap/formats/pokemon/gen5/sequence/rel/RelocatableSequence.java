@@ -17,11 +17,15 @@ import ctrmap.formats.pokemon.gen5.sequence.SeqOpCode;
 import ctrmap.formats.pokemon.gen5.sequence.Sequence;
 import ctrmap.formats.pokemon.gen5.sequence.commands.SeqCommandObject;
 import ctrmap.formats.pokemon.gen5.sequence.commands.SeqCommandObjectFactory;
+import xstandard.gui.file.ExtensionFilter;
+import xstandard.io.base.impl.ext.data.DataInStream;
 
 /**
  *
  */
 public class RelocatableSequence extends Sequence {
+
+	public static final ExtensionFilter EXTENSION_FILTER = new ExtensionFilter("Relocatable sequence", "*.bseq");
 
 	public static final String MAGIC = "RlSeqBin";
 	public static final String RELOCATION_TABLE_MAGIC = "RelocTbl";
@@ -73,6 +77,18 @@ public class RelocatableSequence extends Sequence {
 		resources = s.resources;
 	}
 
+	public static boolean checkMagic(FSFile file) {
+		if (file.length() < MAGIC.length()) {
+			return false;
+		}
+		try (DataInStream in = file.getDataInputStream()) {
+			return StringIO.checkMagic(in, MAGIC);
+		} catch (IOException ex) {
+			Logger.getLogger(RelocatableSequence.class.getName()).log(Level.SEVERE, null, ex);
+			return false;
+		}
+	}
+
 	public void write() {
 		if (source != null) {
 			try {
@@ -82,7 +98,7 @@ public class RelocatableSequence extends Sequence {
 				out.writeStringUnterminated(MAGIC);
 				TemporaryOffset rtOffset = new TemporaryOffset(out);
 				RelocatableWriter.RelocatableOffset seqDataOffset = new RelocatableWriter.RelocatableOffset(out);
-			
+
 				out.writeStringUnterminated(SeqHeader.RS_MAGIC);
 				seqDataOffset.setHere();
 				RelocatableWriter.RelocatableOffset paramsOffset = new RelocatableWriter.RelocatableOffset(out);
@@ -109,7 +125,7 @@ public class RelocatableSequence extends Sequence {
 				cmds2Offset.setHere();
 				writeCmdArray(endCommands, out);
 				out.pad(RS_PADDING);
-				
+
 				//Resources
 				out.writeStringUnterminated("RSC0");
 				rscOffset.setHere();
@@ -122,7 +138,7 @@ public class RelocatableSequence extends Sequence {
 				out.writeStringUnterminated(RELOCATION_TABLE_MAGIC);
 				out.writeInt(0);
 				out.writeRelocationTable();
-				
+
 				out.pad(0x40);
 
 				out.close();
@@ -136,17 +152,16 @@ public class RelocatableSequence extends Sequence {
 	private static void writeCmdArray(List<SeqCommandObject> cmds, DataOutput out) throws IOException {
 		cmds = new ArrayList<>(cmds);
 		cmds.sort((SeqCommandObject o1, SeqCommandObject o2) -> {
-			if (o1.getOpCode() == SeqOpCode.CMD_END){
+			if (o1.getOpCode() == SeqOpCode.CMD_END) {
 				return 1;
-			}
-			else if (o2.getOpCode() == SeqOpCode.CMD_END){
+			} else if (o2.getOpCode() == SeqOpCode.CMD_END) {
 				return -1;
 			}
 			return o1.startFrame - o2.startFrame;
 		});
-		
+
 		SeqCommandObject endCmd = null;
-		
+
 		for (SeqCommandObject cmd : cmds) {
 			SeqCommandObjectFactory.createWritableCommand(cmd).write(out);
 			if (cmd.getOpCode() == SeqOpCode.CMD_END) {

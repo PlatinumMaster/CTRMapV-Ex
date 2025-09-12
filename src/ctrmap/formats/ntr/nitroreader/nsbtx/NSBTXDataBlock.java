@@ -120,6 +120,10 @@ public class NSBTXDataBlock {
 				if (tex.getFormat() == GETextureFormat.RGB5A1) {
 					dest.addTexture(tex.decode(null));
 				} else {
+					if (palettes.size() == 1) {
+						dest.addTexture(decodeTexture(tex, palettes.get(0)));
+						break;
+					}
 					for (NSBTXPalette pal : palettes) {
 						if (pal.name.equals(tex.name) || pal.name.equals(tex.name + "_pl")) {
 							dest.addTexture(decodeTexture(tex, pal));

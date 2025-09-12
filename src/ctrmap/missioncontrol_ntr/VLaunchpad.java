@@ -3,7 +3,9 @@ package ctrmap.missioncontrol_ntr;
 import ctrmap.missioncontrol_base.IMissionControl;
 import ctrmap.missioncontrol_ntr.field.VFieldController;
 import ctrmap.missioncontrol_ntr.fs.NTRGameFS;
+import ctrmap.missioncontrol_ntr.sequence.VSequenceController;
 import java.util.List;
+import xstandard.res.ResourceAccess;
 
 public class VLaunchpad extends IMissionControl {
 
@@ -14,6 +16,7 @@ public class VLaunchpad extends IMissionControl {
 	public VMcConfig config;
 
 	public VFieldController field;
+	public VSequenceController sequence;
 	
 	public VRTC.Season season = VRTC.Season.getRTC();
 	
@@ -22,6 +25,8 @@ public class VLaunchpad extends IMissionControl {
 		fs = new NTRGameFS(fsManager, game);
 
 		fs.initAccurateArcFileSupport();
+		
+		backend.getProgramManager().getUserShManager().addIncludeDirectory(ResourceAccess.getResourceFile("missioncontrol/shader"));
 
 		log.out("Mission control has succesfully initialized.", VMCModuleLogSource.BASE);
 	}
@@ -38,5 +43,6 @@ public class VLaunchpad extends IMissionControl {
 	public void start(VMcConfig config) {
 		this.config = config;
 		field = new VFieldController(this);
+		sequence = new VSequenceController(this);
 	}
 }
