@@ -22,10 +22,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import xstandard.fs.FSFile;
 
-/**
- *
- * @author platinum
- */
 public class VWildEditor extends javax.swing.JPanel implements VZoneDebugger, AbstractTabbedEditor {
     private CTRMap Instance;
     private TextFile PkmnNames;
@@ -59,18 +55,6 @@ public class VWildEditor extends javax.swing.JPanel implements VZoneDebugger, Ab
     @Override
     public boolean isGameSupported(GameInfo game) {
         return game.isGenV();
-    }
-    
-    @Override
-    public void loadZone(VZone z) {
-        if (z != null) {
-            try {
-                LoadEncountersFromFile(z.header.encID);
-                LoadEncounterByIndex(0);
-            } catch (IOException ex) {
-                Logger.getLogger(VWildEditor.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
     }
     
     private void LoadEncountersFromFile(int Index) throws IOException {
@@ -746,5 +730,10 @@ public class VWildEditor extends javax.swing.JPanel implements VZoneDebugger, Ab
     private javax.swing.JPanel regularPanel7;
     private javax.swing.JPanel regularPanel8;
     // End of variables declaration//GEN-END:variables
+
+    @Override
+    public void loadZone(VZone z) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
 
 }
