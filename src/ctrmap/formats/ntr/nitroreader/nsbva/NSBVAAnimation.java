@@ -29,11 +29,11 @@ public class NSBVAAnimation implements INamed {
 		for (int i = 0; i < visGroupCount; i++) {
 			tracks.add(new NSBVATrack(frameCount));
 		}
-		long visData = 0;
+		int visData = 0;
 		int count = 0;
 		for (int i = 0; i < frameCount; i++) {
 			for (int j = 0; j < visGroupCount; j++) {
-				if (count % 31 == 0) {
+				if (count % 32 == 0) {
 					visData = data.readInt();
 				}
 				tracks.get(j).addFrame((visData & 1) != 0);

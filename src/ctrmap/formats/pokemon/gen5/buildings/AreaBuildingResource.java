@@ -1,5 +1,6 @@
 package ctrmap.formats.pokemon.gen5.buildings;
 
+import ctrmap.formats.ntr.nitroreader.common.NNSG3DResource;
 import ctrmap.formats.ntr.nitroreader.nsbca.NSBCA;
 import ctrmap.formats.ntr.nitroreader.nsbta.NSBTA;
 import ctrmap.formats.ntr.nitroreader.nsbtp.NSBTP;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import xstandard.fs.accessors.MemoryFile;
 
 /**
  *
@@ -46,7 +48,7 @@ public class AreaBuildingResource extends G3DResource {
 	public AreaBuildingResource(int uid) {
 		this.uid = uid;
 	}
-	
+
 	public AreaBuildingResource(byte[] bytes) {
 		try {
 			DataIOStream dis = new DataIOStream(bytes);
@@ -102,11 +104,11 @@ public class AreaBuildingResource extends G3DResource {
 	public void addListener(ABResourceListener l) {
 		ArraysEx.addIfNotNullOrContains(listeners, l);
 	}
-	
+
 	public void removeListener(ABResourceListener l) {
 		listeners.remove(l);
 	}
-	
+
 	public void condenseAnimations() {
 		for (int outIndex = 0; outIndex < 4; outIndex++) {
 			if (convAnimations[outIndex] == null) {
@@ -122,7 +124,7 @@ public class AreaBuildingResource extends G3DResource {
 			}
 		}
 	}
-	
+
 	public void spreadAnimations2x2() {
 		condenseAnimations();
 		if (getPresentAnimationCount() == 2) {
@@ -130,11 +132,11 @@ public class AreaBuildingResource extends G3DResource {
 			convAnimations[1] = null;
 		}
 	}
-	
+
 	private List<ABResourceListener> getListenersStatic() {
 		return new ArrayList<>(listeners);
 	}
-	
+
 	public void sendDiscardToListeners(int replacementUID) {
 		for (ABResourceListener l : getListenersStatic()) {
 			l.onUIDChanged(replacementUID);
@@ -149,7 +151,7 @@ public class AreaBuildingResource extends G3DResource {
 			}
 		}
 	}
-	
+
 	public void setUID(int uid) {
 		if (this.uid != uid) {
 			this.uid = uid;
@@ -167,7 +169,7 @@ public class AreaBuildingResource extends G3DResource {
 			}
 		}
 	}
-	
+
 	public int getAnimationCount() {
 		return animations.length;
 	}
@@ -204,12 +206,12 @@ public class AreaBuildingResource extends G3DResource {
 		}
 		return null;
 	}
-	
+
 	public void setAnm(int index, AbstractAnimation anm, byte[] anmRaw) {
 		if (index >= 0 && index < 4) {
 			convAnimations[index] = anm;
 			animations[index] = anmRaw;
-			
+
 			for (ABResourceListener l : listeners) {
 				l.onAnmCntTypeChanged();
 			}
@@ -266,24 +268,21 @@ public class AreaBuildingResource extends G3DResource {
 		int anmIdx = 0;
 		for (byte[] anmData : animations) {
 			if (anmData != null && anmData.length > 4) {
+				NNSG3DResource anmRawRes = NNSG3DResource.read(new MemoryFile("animation", anmData));
 				G3DResource anmRes = null;
 
-				switch (StringIO.getMagic(anmData, 0, 4)) {
-					case NSBTA.MAGIC:
-						anmRes = new NSBTA(anmData).toGeneric();
-						break;
-					case NSBTP.MAGIC:
-						anmRes = new NSBTP(anmData).toGeneric();
-						break;
-					case NSBCA.MAGIC:
-						if (!models.isEmpty()) {
-							Model mdl = models.get(0);
-							NSBCA bca = new NSBCA(anmData);
-							if (bca.acceptsModel(mdl)) {
-								anmRes = bca.toGeneric(mdl.skeleton);
-							}
+				if (anmRawRes instanceof NSBTA) {
+					anmRes = ((NSBTA) anmRawRes).toGeneric();
+				} else if (anmRawRes instanceof NSBTP) {
+					anmRes = ((NSBTP) anmRawRes).toGeneric();
+				} else if (anmRawRes instanceof NSBCA) {
+					if (!models.isEmpty()) {
+						Model mdl = models.get(0);
+						NSBCA bca = (NSBCA) anmRawRes;
+						if (bca.acceptsModel(mdl)) {
+							anmRes = bca.toGeneric(mdl.skeleton);
 						}
-						break;
+					}
 				}
 
 				AbstractAnimation resultAnm = null;
@@ -329,8 +328,8 @@ public class AreaBuildingResource extends G3DResource {
 			return false;
 		}
 		final AreaBuildingResource other = (AreaBuildingResource) obj;
-		
-		return uid == other.uid && type == other.type && doorUID == other.doorUID && doorX == other.doorX && doorY == other.doorY && doorZ == other.doorZ 
+
+		return uid == other.uid && type == other.type && doorUID == other.doorUID && doorX == other.doorX && doorY == other.doorY && doorZ == other.doorZ
 			&& unk1 == other.unk1 && unk2 == other.unk2 && anmSetEntryCount == other.anmSetEntryCount && animationCount == other.animationCount && anmCntType == other.anmCntType;
 	}
 
@@ -346,7 +345,9 @@ public class AreaBuildingResource extends G3DResource {
 	public static interface ABResourceListener {
 
 		public void onUIDChanged(int newUID);
+
 		public void onDoorUIDChanged(int newUID);
+
 		public void onAnmCntTypeChanged();
 	}
 }

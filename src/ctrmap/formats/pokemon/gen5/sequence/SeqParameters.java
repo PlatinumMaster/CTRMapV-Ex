@@ -1,5 +1,6 @@
 package ctrmap.formats.pokemon.gen5.sequence;
 
+import ctrmap.formats.ntr.common.FX;
 import ctrmap.formats.ntr.common.gfx.GXColor;
 import ctrmap.formats.ntr.common.gfx.GXColorAlpha;
 import xstandard.formats.yaml.YamlNode;
@@ -25,33 +26,18 @@ public class SeqParameters {
 
 	@YamlNodeName("P1")
 	public int p1;
-	@YamlNodeName("FieldAreaID")
-	public int fieldAreaID;
-	@YamlNodeName("P8")
-	public int p8;
-	@YamlNodeName("P9")
-	public int p9;
-
-	@YamlNodeName("P10")
-	public float p12;
-
-	@YamlNodeName("field_4E")
-	public int field_4E;
-	@YamlNodeName("field_50")
-	public int field_50;
-	@YamlNodeName("field_52")
-	public int field_52;
+	@YamlNodeName("FieldZoneID")
+	public int fieldZoneID;
 	
-	private byte[] raw = new byte[42 * 2];
-
+	@YamlNodeName("StartFade")
+	public FadeConfig startFade;
+	@YamlNodeName("EndFade")
+	public FadeConfig endFade;
+	
 	public SeqParameters(DataInput in) throws IOException {
-		//in.readFully(raw);
-		if (true){
-			//return;
-		}
 		camera.animeID = in.readUnsignedShort();
 		p1 = in.readUnsignedShort();
-		fieldAreaID = in.readUnsignedShort();
+		fieldZoneID = in.readUnsignedShort();
 
 		int flags = in.readUnsignedShort();
 		renderState.isVBlank60FPS = (flags & 1) != 0;
@@ -65,19 +51,18 @@ public class SeqParameters {
 		renderState.alphaTest.enabled = (flags & 256) != 0;
 		renderState.alphaTest.reference = (flags >> 9) & 31;
 
-		camera.fovX = in.readInt() / 4096f;
-		camera.fovY = in.readInt() / 4096f;
+		camera.fovX = FX.unfx32(in.readInt());
+		camera.fovY = FX.unfx32(in.readInt());
 
-		p8 = in.readUnsignedShort();
-		p9 = in.readUnsignedShort();
-		camera.zNear = in.readInt() / 4096f;
-		camera.zFar = in.readInt() / 4096f;
-		p12 = in.readInt() / 4096f;
+		camera.aspectRatio = FX.unfx32(in.readInt());
+		camera.zNear = FX.unfx32(in.readInt());
+		camera.zFar = FX.unfx32(in.readInt());
+		camera.ndcRange = FX.unfx32(in.readInt());
 
-		camera.topScreenOffset = in.readShort();
-		camera.bottomScreenOffset = in.readShort();
+		camera.topScreenOffset = FX.unfx16(in.readShort());
+		camera.bottomScreenOffset = FX.unfx16(in.readShort());
 
-		renderState.disp1DotDepth = in.readInt() / 4096f;
+		renderState.disp1DotDepth = FX.unfx32(in.readInt());
 
 		clearColor.color = new GXColorAlpha(in.readUnsignedShort(), in.readUnsignedShort());
 		clearColor.polygonID = in.readUnsignedShort();
@@ -97,9 +82,9 @@ public class SeqParameters {
 			edgeTable.edgeColorTable[i] = new GXColor(in.readUnsignedShort());
 		}
 
-		field_4E = in.readUnsignedShort();
-		field_50 = in.readUnsignedShort();
-		field_52 = in.readUnsignedShort();
+		startFade = readFadeConfig(in);
+		endFade = readFadeConfig(in);
+		in.readShort(); //2-byte padding so that struct has proper outer alignment
 	}
 	
 	public SeqParameters(){
@@ -107,13 +92,9 @@ public class SeqParameters {
 	}
 	
 	public void write(DataOutput out) throws IOException {
-		//out.write(raw);
-		if (true){
-			//return;
-		}
 		out.writeShort(camera.animeID);
 		out.writeShort(p1);
-		out.writeShort(fieldAreaID);
+		out.writeShort(fieldZoneID);
 		
 		int flags = 0;
 		flags |= renderState.isVBlank60FPS ? 1 : 0;
@@ -128,20 +109,19 @@ public class SeqParameters {
 		flags |= renderState.alphaTest.reference << 9;
 		out.writeShort(flags);
 		
-		out.writeInt((int)(camera.fovX * 4096f));
-		out.writeInt((int)(camera.fovY * 4096f));
+		out.writeInt(FX.fx32(camera.fovX));
+		out.writeInt(FX.fx32(camera.fovY));
 		
-		out.writeShort(p8);
-		out.writeShort(p9);
+		out.writeInt(FX.fx32(camera.aspectRatio));
 		
-		out.writeInt((int)(camera.zNear * 4096f));
-		out.writeInt((int)(camera.zFar * 4096f));
-		out.writeInt((int)(p12 * 4096f));
+		out.writeInt(FX.fx32(camera.zNear));
+		out.writeInt(FX.fx32(camera.zFar));
+		out.writeInt(FX.fx32(camera.ndcRange));
 
-		out.writeShort(camera.topScreenOffset);
-		out.writeShort(camera.bottomScreenOffset);
+		out.writeShort(FX.fx16(camera.topScreenOffset));
+		out.writeShort(FX.fx16(camera.bottomScreenOffset));
 		
-		out.writeInt((int)(renderState.disp1DotDepth * 4096f));
+		out.writeInt(FX.fx32(renderState.disp1DotDepth));
 		
 		clearColor.color.write(out);
 		clearColor.color.writeAlpha(out, true);
@@ -161,9 +141,21 @@ public class SeqParameters {
 			edgeTable.edgeColorTable[i].write(out);
 		}
 		
-		out.writeShort(field_4E);
-		out.writeShort(field_50);
-		out.writeShort(field_52);
+		writeFadeConfig(out, startFade);
+		writeFadeConfig(out, endFade);
+		out.writeShort(0);
+	}
+	
+	private FadeConfig readFadeConfig(DataInput in) throws IOException {
+		FadeConfig fade = new FadeConfig();
+		fade.isWhite = in.readBoolean();
+		fade.duration = in.readUnsignedByte();
+		return fade;
+	}
+	
+	private void writeFadeConfig(DataOutput out, FadeConfig fade) throws IOException {
+		out.writeBoolean(fade.isWhite);
+		out.write(fade.duration);
 	}
 
 	public YamlNode getYMLNode() {
@@ -175,20 +167,26 @@ public class SeqParameters {
 
 		@YamlNodeName("AnimeID")
 		public int animeID;
+		
 		@YamlNodeName("FOVX")
 		public float fovX;
 		@YamlNodeName("FOVY")
 		public float fovY;
 		
+		@YamlNodeName("AspectRatio")
+		public float aspectRatio;
+		
 		@YamlNodeName("ZFar")
 		public float zFar;
 		@YamlNodeName("ZNear")
 		public float zNear;
+		@YamlNodeName("NDCRange")
+		public float ndcRange;
 
 		@YamlNodeName("TopScreenOffset")
-		public int topScreenOffset;
+		public float topScreenOffset;
 		@YamlNodeName("BottomScreenOffset")
-		public int bottomScreenOffset;
+		public float bottomScreenOffset;
 	}
 
 	public static class SeqRenderState {
@@ -259,5 +257,13 @@ public class SeqParameters {
 		public int polygonID;
 		@YamlNodeName("Depth")
 		public int depth;
+	}
+	
+	public static class FadeConfig {
+		
+		@YamlNodeName("IsWhite")
+		public boolean isWhite;
+		@YamlNodeName("Duration")
+		public int duration;
 	}
 }

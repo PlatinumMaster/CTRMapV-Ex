@@ -26,6 +26,7 @@ import ctrmap.formats.pokemon.gen5.npcreg.VNPCRegistry;
 import ctrmap.formats.pokemon.gen5.zone.VZoneTable;
 import ctrmap.formats.pokemon.gen5.zone.entities.VGridObject;
 import ctrmap.formats.pokemon.gen5.zone.extra.ZoneMapEffSkillIndex;
+import ctrmap.formats.pokemon.gen5.zone.extra.ZoneStaticLightIndex;
 import ctrmap.formats.pokemon.text.GenVMessageHandler;
 import ctrmap.missioncontrol_base.debug.IMCDebuggable;
 import ctrmap.missioncontrol_ntr.VGameConstant;
@@ -62,6 +63,7 @@ public class VFieldController implements IMCDebuggable<VFieldDebugger> {
 	public VZoneTable zoneTable;
 	public AreaTable areaTable;
 	public ZoneFogIndex fogIndex;
+	public ZoneStaticLightIndex staticLightIndex;
 	public ZoneGimmickIndex gimmickIndex;
 	public ZoneMapEffSkillIndex flashIndex;
 	public VNPCRegistry npcTable;
@@ -105,6 +107,7 @@ public class VFieldController implements IMCDebuggable<VFieldDebugger> {
 		zoneTable = new VZoneTable(fs.NARCGet(NARCRef.FIELD_ZONE_DATA, 0));
 		areaTable = new AreaTable(fs.NARCGetArchive(NARCRef.FIELD_AREA_DATA));
 		fogIndex = new ZoneFogIndex(fs.NARCGet(NARCRef.FIELD_ENV_FOG, game.isBW2() ? 29 : 13));
+		staticLightIndex = new ZoneStaticLightIndex(fs.NARCGet(NARCRef.COMMON_LIGHTS, 1));
 		gimmickIndex = new ZoneGimmickIndex(fs.NARCGet(NARCRef.FIELD_ZONE_GIMMICK_INDEX, 0));
 		flashIndex = new ZoneMapEffSkillIndex(fs.NARCGet(NARCRef.FIELD_ZONE_FLASH_INDEX, 0));
 		locationNames = new TextFile(fs.NARCGet(NARCRef.MSGDATA_SYSTEM, LOC_NAME_TEXT_ID.get(game)), GenVMessageHandler.INSTANCE);
@@ -339,7 +342,8 @@ public class VFieldController implements IMCDebuggable<VFieldDebugger> {
 			area = null;
 			System.gc();
 			area = new VArea(fs, this, areaId);
-			lights.loadArea(area, mc.season);
+			lights.setSeason(mc.season);
+			lights.loadArea(area);
 		}
 	}
 

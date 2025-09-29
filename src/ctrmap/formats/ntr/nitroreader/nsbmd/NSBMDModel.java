@@ -7,9 +7,11 @@ import ctrmap.formats.ntr.nitroreader.nsbmd.sbccommands.*;
 import java.util.ArrayList;
 import java.util.List;
 import ctrmap.formats.ntr.nitroreader.common.Utils;
+import ctrmap.renderer.scene.model.Joint;
 import ctrmap.renderer.scene.model.Mesh;
 import ctrmap.renderer.scene.model.MeshVisibilityGroup;
 import ctrmap.renderer.scene.model.Model;
+import ctrmap.renderer.scene.model.Skeleton;
 import ctrmap.renderer.scene.model.Vertex;
 import ctrmap.renderer.scene.texturing.Material;
 import ctrmap.renderer.util.MeshProcessor;
@@ -191,7 +193,7 @@ public class NSBMDModel implements INamed {
 		conv.matrixMode(MtxMode.GEMatrixMode.MODELVIEW_NORMAL);
 
 		for (SBCCommand sbc : commands) {
-			System.out.println(sbc);
+			//System.out.println(sbc);
 			sbc.toGeneric(conv);
 		}
 
@@ -220,7 +222,7 @@ public class NSBMDModel implements INamed {
 				if (!mergedMeshes.containsKey(key)) {
 					mergedMeshes.put(key, mesh);
 					mesh.name = key;
-					if (settings.makeSmoothSkin) {
+					if (settings.makeSmoothSkin && !meshIsRigidZeroScale(mesh, mdl.skeleton)) {
 						MeshProcessor.transformRigidSkinningToSmooth(mesh, mdl.skeleton, true);
 					}
 				} else {
@@ -252,7 +254,7 @@ public class NSBMDModel implements INamed {
 					}
 				}
 			} else {
-				if (settings.makeSmoothSkin) {
+				if (settings.makeSmoothSkin && !meshIsRigidZeroScale(mesh, mdl.skeleton)) {
 					MeshProcessor.transformRigidSkinningToSmooth(mesh, mdl.skeleton, true);
 				}
 				mdl.addMesh(mesh);
@@ -269,6 +271,24 @@ public class NSBMDModel implements INamed {
 		}
 
 		return mdl;
+	}
+	
+	private static boolean meshIsRigidZeroScale(Mesh mesh, Skeleton skeleton) {
+		//if we transform this to smooth, then the mesh will degenerate.
+		//sometimes there are cases where the bind pose has a zero scale, unfortunately
+		if (mesh.skinningType == Mesh.SkinningType.RIGID && !mesh.vertices.isEmpty()) {
+			Vertex vtx = mesh.vertices.get(0);
+			if (vtx.boneIndices.size() == 1) {
+				Joint j = skeleton.getJoint(vtx.boneIndices.get(0));
+				while (j != null) {
+					if (j.scale.x == 0f || j.scale.y == 0f || j.scale.z == 0f) {
+						return true;
+					}
+					j = j.getParent();
+				}
+			}
+		}
+		return false;
 	}
 
 	public List<NSBMDMaterial> getMaterials() {
