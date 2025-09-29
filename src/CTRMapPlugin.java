@@ -2,18 +2,24 @@
 import ctrmap.CTRMapVResources;
 import ctrmap.Launc;
 import ctrmap.editor.CTRMapMenuActions;
+import ctrmap.editor.gui.editors.gen5.battle.encounters.VWildEditor;
+import ctrmap.editor.gui.editors.gen5.battle.trainer.VTrainerEditor;
 import ctrmap.editor.gui.editors.gen5.level.VLevelEditor;
 import ctrmap.editor.gui.editors.gen5.level.VZoneEditor;
 import ctrmap.editor.gui.editors.gen5.level.building.VPropEditor;
 import ctrmap.editor.gui.editors.gen5.level.camera.VCameraEditor;
 import ctrmap.editor.gui.editors.gen5.level.entities.VEventEditor;
+import ctrmap.editor.gui.editors.gen5.level.entities.VInitScriptEditor;
 import ctrmap.editor.gui.editors.gen5.level.entities.VProxyEditor;
 import ctrmap.editor.gui.editors.gen5.level.entities.VNPCEditor;
 import ctrmap.editor.gui.editors.gen5.level.entities.VScriptingAssistant;
 import ctrmap.editor.gui.editors.gen5.level.entities.VTriggerEditor;
 import ctrmap.editor.gui.editors.gen5.level.entities.VWarpEditor;
 import ctrmap.editor.gui.editors.gen5.level.extra.VExtrasPanel;
+import ctrmap.editor.gui.editors.gen5.level.maps.VMapContainerEditor;
+import ctrmap.editor.gui.editors.gen5.level.maps.VZoneMatrixEditor;
 import ctrmap.editor.gui.editors.gen5.level.rail.VRailEditor;
+import ctrmap.editor.gui.editors.gen5.scripting.VScriptEditor;
 import ctrmap.editor.gui.editors.scenegraph.ScenegraphExplorer;
 import ctrmap.editor.gui.workspace.ROMExportDialog;
 import ctrmap.editor.system.juliet.CTRMapPluginInterface;
@@ -61,6 +67,7 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 			VNPCEditor.class,
 			VWarpEditor.class,
 			VTriggerEditor.class,
+			VInitScriptEditor.class,
 			VPropEditor.class,
 			VScriptingAssistant.class,
 			VRailEditor.class,
@@ -69,7 +76,12 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 		);
 		j.rmoRegistTabbedEditors(VLevelEditor.class,
 			VZoneEditor.class,
+                        VScriptEditor.class,
 			VEventEditor.class,
+                        VTrainerEditor.class,
+                        VWildEditor.class,
+                        VMapContainerEditor.class,
+                        VZoneMatrixEditor.class,
 			VExtrasPanel.class
 		);
 	}
