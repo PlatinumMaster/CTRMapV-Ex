@@ -25,7 +25,7 @@ public class CodeInjectionSystem implements RPMExternalRelocator, RPMSplitManage
 	public static final String CISYS_ROMFS_DIR = "codeinjection";
 	public static final String CISYS_RPM_SYMFILE_METAVALUE_KEY = "SymbolFile";
 
-	private static final CodeInjectionSetup DEFAULT_CODEINJECTION_SETUP = new CodeInjectionSetup(344, 0x021FD0C0, 0x8000);
+	private static CodeInjectionSetup DEFAULT_CODEINJECTION_SETUP;
 	
 	private NTRGameFS fs;
 	private ExternalSymbolDB esdb;
@@ -39,6 +39,13 @@ public class CodeInjectionSystem implements RPMExternalRelocator, RPMSplitManage
 	
 	public CodeInjectionSystem(NTRGameFS gameFS, ExternalSymbolDB esdb, CodeInjectionSetup setup) {
 		fs = gameFS;
+                
+                if (gameFS.getGameInfo().isBW()) {
+                    DEFAULT_CODEINJECTION_SETUP = new CodeInjectionSetup(237, 0x02213D20, 0x8000); 
+                } else if (gameFS.getGameInfo().isBW2()) {
+                    DEFAULT_CODEINJECTION_SETUP = new CodeInjectionSetup(344, 0x021FD0C0, 0x8000); 
+                }
+                
 		this.esdb = esdb;
 		ovlTable = fs.getARM9OverlayTable();
 
