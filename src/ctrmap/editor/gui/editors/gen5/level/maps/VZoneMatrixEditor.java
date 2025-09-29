@@ -333,7 +333,7 @@ public class VZoneMatrixEditor extends javax.swing.JPanel implements VZoneDebugg
         try {
             LoadMatrix((Integer) matrixIdSpinner.getValue());
         } catch (IOException ex) {
-            System.getLogger(VZoneMatrixEditor.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+            Logger.getLogger(VZoneMatrixEditor.class.getName()).log(Level.SEVERE, null, ex);
         }
     }//GEN-LAST:event_btnOpenScrInIDE22ActionPerformed
 
@@ -341,7 +341,7 @@ public class VZoneMatrixEditor extends javax.swing.JPanel implements VZoneDebugg
         try {
             SaveMatrix((Integer) matrixIdSpinner.getValue());
         } catch (IOException ex) {
-            System.getLogger(VZoneMatrixEditor.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+            Logger.getLogger(VZoneMatrixEditor.class.getName()).log(Level.SEVERE, null, ex);
         }
     }//GEN-LAST:event_btnOpenScrInIDE23ActionPerformed
 
