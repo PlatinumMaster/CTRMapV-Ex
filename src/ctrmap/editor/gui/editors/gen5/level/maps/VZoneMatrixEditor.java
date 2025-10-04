@@ -190,7 +190,7 @@ public class VZoneMatrixEditor extends javax.swing.JPanel implements VZoneDebugg
         scriptPnl14 = new javax.swing.JPanel();
         btnOpenScrInIDE22 = new javax.swing.JButton();
         btnOpenScrInIDE23 = new javax.swing.JButton();
-        matrixIdSpinner = new javax.swing.JSpinner();
+        trainerSpinner = new javax.swing.JSpinner();
         jUseZoneHeaders = new javax.swing.JCheckBox();
         jWidthLabel = new javax.swing.JLabel();
         jWidthSpinner = new javax.swing.JSpinner();
@@ -238,7 +238,7 @@ public class VZoneMatrixEditor extends javax.swing.JPanel implements VZoneDebugg
             scriptPnl14Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(scriptPnl14Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(matrixIdSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 88, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(trainerSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 88, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(btnOpenScrInIDE22, javax.swing.GroupLayout.PREFERRED_SIZE, 122, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -262,7 +262,7 @@ public class VZoneMatrixEditor extends javax.swing.JPanel implements VZoneDebugg
             .addGroup(scriptPnl14Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                 .addComponent(btnOpenScrInIDE22)
                 .addComponent(btnOpenScrInIDE23)
-                .addComponent(matrixIdSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(trainerSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addComponent(jUseZoneHeaders)
                 .addComponent(jWidthSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addComponent(jWidthLabel)
@@ -276,13 +276,10 @@ public class VZoneMatrixEditor extends javax.swing.JPanel implements VZoneDebugg
         jMatrixViewMaps.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         jMatrixViewMaps.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
+
             },
             new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
+
             }
         ));
         jMatrixViewMaps.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
@@ -331,7 +328,7 @@ public class VZoneMatrixEditor extends javax.swing.JPanel implements VZoneDebugg
 
     private void btnOpenScrInIDE22ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenScrInIDE22ActionPerformed
         try {
-            LoadMatrix((Integer) matrixIdSpinner.getValue());
+            LoadMatrix((Integer) trainerSpinner.getValue());
         } catch (IOException ex) {
             Logger.getLogger(VZoneMatrixEditor.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -339,7 +336,7 @@ public class VZoneMatrixEditor extends javax.swing.JPanel implements VZoneDebugg
 
     private void btnOpenScrInIDE23ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenScrInIDE23ActionPerformed
         try {
-            SaveMatrix((Integer) matrixIdSpinner.getValue());
+            SaveMatrix((Integer) trainerSpinner.getValue());
         } catch (IOException ex) {
             Logger.getLogger(VZoneMatrixEditor.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -364,7 +361,7 @@ public class VZoneMatrixEditor extends javax.swing.JPanel implements VZoneDebugg
     private javax.swing.JCheckBox jUseZoneHeaders;
     private javax.swing.JLabel jWidthLabel;
     private javax.swing.JSpinner jWidthSpinner;
-    private javax.swing.JSpinner matrixIdSpinner;
     private javax.swing.JPanel scriptPnl14;
+    private javax.swing.JSpinner trainerSpinner;
     // End of variables declaration//GEN-END:variables
 }

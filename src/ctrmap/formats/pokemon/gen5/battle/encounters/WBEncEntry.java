@@ -23,19 +23,19 @@ public class WBEncEntry {
         MaxLevel = Input.readByte();
     }
     
-    public short GetDexNum() {
+    public short GetSpecies() {
         return this.DexNum;
     }
     
-    public void SetDexNum(short DexNum) {
+    public void SetSpecies(short DexNum) {
         this.DexNum = DexNum;
     }
         
-    public short GetFormNum() {
+    public short GetForm() {
         return this.FormNum;
     }
     
-    public void SetFormNum(short FormNum) {
+    public void SetForm(short FormNum) {
         this.FormNum = FormNum;
     }
     

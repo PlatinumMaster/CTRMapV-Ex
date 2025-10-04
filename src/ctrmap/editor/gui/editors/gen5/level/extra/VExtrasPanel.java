@@ -34,6 +34,7 @@ import rpm.util.AutoRelGenerator;
 import xstandard.formats.yaml.Yaml;
 import xstandard.gui.DialogUtils;
 
+
 public class VExtrasPanel extends javax.swing.JPanel implements AbstractTabbedEditor {
 
 	private CTRMap cm;

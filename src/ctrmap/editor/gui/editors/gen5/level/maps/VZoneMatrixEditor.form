@@ -53,7 +53,7 @@
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" alignment="0" attributes="0">
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="matrixIdSpinner" min="-2" pref="88" max="-2" attributes="0"/>
+                  <Component id="trainerSpinner" min="-2" pref="88" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="btnOpenScrInIDE22" min="-2" pref="122" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
@@ -79,7 +79,7 @@
               <Group type="103" groupAlignment="3" attributes="0">
                   <Component id="btnOpenScrInIDE22" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="btnOpenScrInIDE23" alignment="3" min="-2" max="-2" attributes="0"/>
-                  <Component id="matrixIdSpinner" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="trainerSpinner" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="jUseZoneHeaders" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="jWidthSpinner" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="jWidthLabel" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -107,7 +107,7 @@
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnOpenScrInIDE23ActionPerformed"/>
           </Events>
         </Component>
-        <Component class="javax.swing.JSpinner" name="matrixIdSpinner">
+        <Component class="javax.swing.JSpinner" name="trainerSpinner">
         </Component>
         <Component class="javax.swing.JCheckBox" name="jUseZoneHeaders">
           <Properties>
@@ -168,12 +168,7 @@
                   </Border>
                 </Property>
                 <Property name="model" type="javax.swing.table.TableModel" editor="org.netbeans.modules.form.editors2.TableModelEditor">
-                  <Table columnCount="4" rowCount="4">
-                    <Column editable="true" title="Title 1" type="java.lang.Object"/>
-                    <Column editable="true" title="Title 2" type="java.lang.Object"/>
-                    <Column editable="true" title="Title 3" type="java.lang.Object"/>
-                    <Column editable="true" title="Title 4" type="java.lang.Object"/>
-                  </Table>
+                  <Table columnCount="0" rowCount="0"/>
                 </Property>
                 <Property name="columnModel" type="javax.swing.table.TableColumnModel" editor="org.netbeans.modules.form.editors2.TableColumnModelEditor">
                   <TableColumnModel selectionModel="0">

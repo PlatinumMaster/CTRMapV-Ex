@@ -21,18 +21,19 @@ public class VWildEncounterSlot extends javax.swing.JPanel {
     
     public VWildEncounterSlot(WBEncEntry Entry, TextFile PkmnNames) {
         this();
+        
         // Populate combobox for species.
         this.speciesComboBox.setModel(new DefaultComboBoxModel(PkmnNames.getFriendlyLinesArray()));
         this.speciesComboBox.addActionListener((ActionEvent ae) -> {
             short SelIndex = (short) this.speciesComboBox.getSelectedIndex();
             if (Entry != null && SelIndex >= 0) {
-                Entry.SetDexNum(SelIndex);
+                Entry.SetSpecies(SelIndex);
             }
         });
         this.formSpinner.addChangeListener((ChangeEvent c) -> {
             short SelVal = (short) this.formSpinner.getValue();
             if (Entry != null && SelVal >= 0) {
-                Entry.SetFormNum(SelVal);
+                Entry.SetForm(SelVal);
             }
         });
         this.minLevelSpinner.addChangeListener((ChangeEvent c) -> {
@@ -47,12 +48,14 @@ public class VWildEncounterSlot extends javax.swing.JPanel {
                 Entry.SetMaxLevel(SelVal);
             }
         });
+        
         UI_Update(Entry);
     }
+    
     void UI_Update(WBEncEntry Entry) {
         if (Entry != null) {
-            this.speciesComboBox.setSelectedIndex(Entry.GetDexNum());
-            this.formSpinner.setValue(Entry.GetFormNum());
+            this.speciesComboBox.setSelectedIndex(Entry.GetSpecies());
+            this.formSpinner.setValue(Entry.GetForm());
             this.minLevelSpinner.setValue((byte)Entry.GetMinLevel());
             this.maxLevelSpinner.setValue((byte)Entry.GetMaxLevel());
         }

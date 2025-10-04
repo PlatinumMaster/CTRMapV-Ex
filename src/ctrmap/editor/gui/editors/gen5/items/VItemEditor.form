@@ -19,8 +19,8 @@
           <Group type="102" alignment="1" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="1" attributes="0">
-                  <Component id="jEncounterTabs" max="32767" attributes="0"/>
-                  <Component id="fileLoadPanel3" max="32767" attributes="0"/>
+                  <Component id="jItemTabbed" max="32767" attributes="0"/>
+                  <Component id="fileLoadPanel" max="32767" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
@@ -28,22 +28,22 @@
     </DimensionLayout>
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Group type="102" alignment="1" attributes="0">
+          <Group type="102" alignment="0" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
-              <Component id="fileLoadPanel3" min="-2" max="-2" attributes="0"/>
+              <Component id="fileLoadPanel" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
-              <Component id="jEncounterTabs" pref="356" max="32767" attributes="0"/>
+              <Component id="jItemTabbed" pref="414" max="32767" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
   </Layout>
   <SubComponents>
-    <Container class="javax.swing.JPanel" name="fileLoadPanel3">
+    <Container class="javax.swing.JPanel" name="fileLoadPanel">
       <Properties>
         <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
           <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-            <TitledBorder title="Encounters"/>
+            <TitledBorder title="Item"/>
           </Border>
         </Property>
       </Properties>
@@ -53,22 +53,24 @@
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" alignment="0" attributes="0">
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="jEncounterIndexSpinner" min="-2" pref="81" max="-2" attributes="0"/>
+                  <Component id="trainerSelector" min="-2" pref="250" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="btnAddZoneData3" min="-2" max="-2" attributes="0"/>
+                  <Component id="btnAddZoneData" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="btnOpenScrInIDE25" min="-2" pref="122" max="-2" attributes="0"/>
-                  <EmptySpace pref="903" max="32767" attributes="0"/>
+                  <Component id="btnOpenScrInIDE22" min="-2" pref="122" max="-2" attributes="0"/>
+                  <EmptySpace pref="647" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" alignment="0" attributes="0">
-                  <Group type="103" groupAlignment="3" attributes="0">
-                      <Component id="btnOpenScrInIDE25" alignment="3" min="-2" max="-2" attributes="0"/>
-                      <Component id="btnAddZoneData3" alignment="3" min="-2" max="-2" attributes="0"/>
-                      <Component id="jEncounterIndexSpinner" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Group type="103" groupAlignment="1" attributes="0">
+                      <Group type="103" alignment="1" groupAlignment="3" attributes="0">
+                          <Component id="btnOpenScrInIDE22" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="btnAddZoneData" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <Component id="trainerSelector" alignment="1" min="-2" max="-2" attributes="0"/>
                   </Group>
                   <EmptySpace max="32767" attributes="0"/>
               </Group>
@@ -76,27 +78,33 @@
         </DimensionLayout>
       </Layout>
       <SubComponents>
-        <Component class="javax.swing.JButton" name="btnOpenScrInIDE25">
+        <Component class="javax.swing.JButton" name="btnOpenScrInIDE22">
           <Properties>
-            <Property name="text" type="java.lang.String" value="Open Encounter"/>
+            <Property name="text" type="java.lang.String" value="Open Item"/>
           </Properties>
           <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnOpenScrInIDE25ActionPerformed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnOpenScrInIDE22ActionPerformed"/>
           </Events>
         </Component>
-        <Component class="javax.swing.JButton" name="btnAddZoneData3">
+        <Component class="javax.swing.JButton" name="btnAddZoneData">
           <Properties>
             <Property name="text" type="java.lang.String" value="+"/>
           </Properties>
           <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnAddZoneData3ActionPerformed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnAddZoneDataActionPerformed"/>
           </Events>
         </Component>
-        <Component class="javax.swing.JSpinner" name="jEncounterIndexSpinner">
+        <Component class="xstandard.gui.components.combobox.ComboBoxAndSpinner" name="trainerSelector">
+          <Properties>
+            <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+              <Font name="Droid Sans" size="12" style="0"/>
+            </Property>
+            <Property name="maximumRowCount" type="int" value="35"/>
+          </Properties>
         </Component>
       </SubComponents>
     </Container>
-    <Container class="javax.swing.JTabbedPane" name="jEncounterTabs">
+    <Container class="javax.swing.JTabbedPane" name="jItemTabbed">
 
       <Layout class="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout"/>
     </Container>

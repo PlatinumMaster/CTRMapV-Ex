@@ -150,6 +150,10 @@ public class WBTrainerData {
         return Index < GetPkmnSize() ? this.TrPoke.get(Index) : null;
     }
     
+    public void AddPkmn(WBTrainerPoke pkmn) {
+        this.TrPoke.add(pkmn);
+    }
+    
     public void Serialize(FSFile TrDat, FSFile TrPoke) {
         try {			
             DataIOStream TrDatStrm = TrDat.getDataIOStream();
