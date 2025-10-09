@@ -125,8 +125,9 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
         }
         VPokemonPersonalDataBinding personalYml = YamlReflectUtil.deserialize(yml.root.children.get(0), VPokemonPersonalDataBinding.class);
         
-        WBPMLPersonal trData = new WBPMLPersonal();
-        return trData;
+        WBPMLPersonal personalData = new WBPMLPersonal();
+        personalData.SetBaseAttack(personalYml.baseAttack);
+        return personalData;
     }
         
     private void btnOpenScrInIDE22ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenScrInIDE22ActionPerformed
