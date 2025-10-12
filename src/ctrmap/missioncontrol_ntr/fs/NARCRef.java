@@ -88,7 +88,8 @@ public enum NARCRef {
 	FIELD_3DCI_EFFECT_G2D(-1, 267),
 	FIELD_3DCI_EFFECT_G2D_INFO(-1, 268),
 	FIELD_G3DOBJ_MARINE_TUBE(-1, 295),
-	DEX_HABITAT_LISTS(-1, 296);
+	DEX_HABITAT_LISTS(-1, 296),
+        TEXT_TYPES(-1, 398);
 
 	private final int idBW;
 	private final int idBW2;

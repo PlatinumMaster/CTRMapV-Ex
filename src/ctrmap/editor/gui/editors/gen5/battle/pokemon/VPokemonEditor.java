@@ -9,6 +9,8 @@ import ctrmap.editor.gui.editors.common.AbstractTabbedEditor;
 import ctrmap.editor.gui.editors.gen5.battle.trainer.VTrainerComponent;
 import ctrmap.editor.gui.editors.gen5.battle.trainer.VTrainerDataBinding;
 import ctrmap.editor.gui.editors.gen5.battle.trainer.VTrainerEditor;
+import ctrmap.editor.gui.editors.util.SystemTextLUT;
+import ctrmap.editor.gui.editors.util.TextSingleton;
 import ctrmap.editor.gui.editors.util.UserEnumHandler;
 import ctrmap.editor.system.workspace.CTRMapProject;
 import ctrmap.editor.system.workspace.UserData;
@@ -17,12 +19,17 @@ import ctrmap.formats.common.GameInfoListener;
 import ctrmap.formats.pokemon.gen5.battle.trainer.WBTrainerData;
 import ctrmap.formats.pokemon.gen5.battle.trainer.WBTrainerPoke;
 import ctrmap.formats.pokemon.gen5.pml.WBPMLPersonal;
+import ctrmap.formats.pokemon.text.GenVMessageHandler;
+import ctrmap.formats.pokemon.text.TextFile;
 import ctrmap.missioncontrol_base.debug.IMCDebugger;
+import ctrmap.missioncontrol_ntr.fs.NARCRef;
+import ctrmap.missioncontrol_ntr.fs.NTRGameFS;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.DefaultComboBoxModel;
 import xstandard.formats.yaml.Yaml;
 import xstandard.formats.yaml.YamlNode;
 import xstandard.formats.yaml.YamlReflectUtil;
@@ -30,14 +37,26 @@ import xstandard.fs.FSFile;
 
 public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbedEditor {
     private CTRMap Instance;
-    public VPokemonEditor() {
-        initComponents();
-    }
-
+    private TextFile PkmnNames, AbilNames, MoveNames, MoveDescs, ItemNames, ItemDescs, Learnsets, Evolutions, Types;
+    
+    private List<WBPMLPersonal> Pokemon;
+    
     public VPokemonEditor(CTRMap Instance) {
         initComponents();
+        this.Pokemon = new ArrayList<>();
         this.Instance = Instance;
+        
+        LoadAllTextArchives();
+        
+        ArrayList<String> speciesNames = new ArrayList<String>();
+        DefaultComboBoxModel cbm = new DefaultComboBoxModel();
+        for (int Index = 0; Index < this.PkmnNames.getLineCount(); ++Index) {
+            speciesNames.add(this.PkmnNames.getLine(Index));
+        }
+        cbm.addAll(speciesNames);
+        this.speciesSelector.getCB().setModel(cbm);
     }
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -49,28 +68,28 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
 
         fileLoadPanel = new javax.swing.JPanel();
         btnOpenScrInIDE22 = new javax.swing.JButton();
-        btnAddZoneData = new javax.swing.JButton();
-        trainerSelector = new xstandard.gui.components.combobox.ComboBoxAndSpinner();
-        jTrainerMetadata = new javax.swing.JTabbedPane();
+        btnAddPersonalData = new javax.swing.JButton();
+        speciesSelector = new xstandard.gui.components.combobox.ComboBoxAndSpinner();
+        jSpeciesMetadata = new javax.swing.JTabbedPane();
 
-        fileLoadPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Trainer"));
+        fileLoadPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Species"));
 
-        btnOpenScrInIDE22.setText("Open Trainer");
+        btnOpenScrInIDE22.setText("Open Species");
         btnOpenScrInIDE22.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnOpenScrInIDE22ActionPerformed(evt);
             }
         });
 
-        btnAddZoneData.setText("+");
-        btnAddZoneData.addActionListener(new java.awt.event.ActionListener() {
+        btnAddPersonalData.setText("+");
+        btnAddPersonalData.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnAddZoneDataActionPerformed(evt);
+                btnAddPersonalDataActionPerformed(evt);
             }
         });
 
-        trainerSelector.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
-        trainerSelector.setMaximumRowCount(35);
+        speciesSelector.setFont(new java.awt.Font("Droid Sans", 0, 12)); // NOI18N
+        speciesSelector.setMaximumRowCount(35);
 
         javax.swing.GroupLayout fileLoadPanelLayout = new javax.swing.GroupLayout(fileLoadPanel);
         fileLoadPanel.setLayout(fileLoadPanelLayout);
@@ -78,9 +97,9 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
             fileLoadPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(fileLoadPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(trainerSelector, javax.swing.GroupLayout.PREFERRED_SIZE, 250, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(speciesSelector, javax.swing.GroupLayout.PREFERRED_SIZE, 250, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(btnAddZoneData)
+                .addComponent(btnAddPersonalData)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(btnOpenScrInIDE22, javax.swing.GroupLayout.PREFERRED_SIZE, 122, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(703, Short.MAX_VALUE))
@@ -91,8 +110,8 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
                 .addGroup(fileLoadPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(fileLoadPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(btnOpenScrInIDE22)
-                        .addComponent(btnAddZoneData))
-                    .addComponent(trainerSelector, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(btnAddPersonalData))
+                    .addComponent(speciesSelector, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -103,7 +122,7 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jTrainerMetadata)
+                    .addComponent(jSpeciesMetadata)
                     .addComponent(fileLoadPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
@@ -113,11 +132,34 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
                 .addContainerGap()
                 .addComponent(fileLoadPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jTrainerMetadata, javax.swing.GroupLayout.DEFAULT_SIZE, 397, Short.MAX_VALUE)
+                .addComponent(jSpeciesMetadata, javax.swing.GroupLayout.DEFAULT_SIZE, 397, Short.MAX_VALUE)
                 .addContainerGap())
         );
     }// </editor-fold>//GEN-END:initComponents
-
+    
+    NTRGameFS FS() {
+        return Instance.getMissionControl(ctrmap.missioncontrol_ntr.VLaunchpad.class).fs;
+    }
+    
+    TextFile LoadTextFile(String File) {
+        return TextSingleton.Load(FS(), NARCRef.MSGDATA_SYSTEM, SystemTextLUT.get(File));
+    }
+    
+    private void LoadAllTextArchives() {
+        this.PkmnNames = LoadTextFile("Pokemon");
+        this.MoveNames = LoadTextFile("Moves");
+        this.Types = LoadTextFile("Types");
+    }
+    
+//    private WBPMLPersonal GetCurrentSpecies() {
+//        //Load current species.
+//        int Index = speciesSelector.getValueSpinner();
+//        if (Index < 0 || Index > FS().NARCGetDataMax(NARCRef.PML_PERSONAL)) {
+//            return null;
+//        }
+//        return Pokemon.get(Index);
+//    }
+    
     public WBPMLPersonal LoadEntryViaYml(Yaml yml) throws Exception {
         // Deserialize the YML into some bindings.
         if (yml.root.children.size() != 1) {
@@ -133,7 +175,7 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
     private void btnOpenScrInIDE22ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenScrInIDE22ActionPerformed
         // Check if the user directory exists.
         FSFile pml_user_directory = Instance.getProject().userData.getUserDataDir(UserData.UsrDirectory.PML_PERSONAL);
-        int personalIndex = trainerSelector.getValueSpinner();
+        int personalIndex = speciesSelector.getValueSpinner();
         String yaml_name = String.format("%d.yml", personalIndex);
         if (pml_user_directory.exists() && pml_user_directory.getChildCount() > 0) {
             FSFile personal_yaml = pml_user_directory.getChild(yaml_name);
@@ -141,6 +183,8 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
                 WBPMLPersonal pml_personal;
                 try {
                     pml_personal = this.LoadEntryViaYml(new Yaml(personal_yaml));
+                    this.jSpeciesMetadata.add(String.format("%d - %s", personalIndex, this.PkmnNames.getLine(personalIndex)),
+                            new VPokemonEditorComponent(this.Instance, pml_personal, this.PkmnNames.getLine(personalIndex)));
                 } catch (Exception ex) {
                     Logger.getLogger(VTrainerEditor.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -150,9 +194,9 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
         }
     }//GEN-LAST:event_btnOpenScrInIDE22ActionPerformed
 
-    private void btnAddZoneDataActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAddZoneDataActionPerformed
+    private void btnAddPersonalDataActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAddPersonalDataActionPerformed
 
-    }//GEN-LAST:event_btnAddZoneDataActionPerformed
+    }//GEN-LAST:event_btnAddPersonalDataActionPerformed
 
     @Override
     public String getTabName() {
@@ -211,10 +255,10 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnAddZoneData;
+    private javax.swing.JButton btnAddPersonalData;
     private javax.swing.JButton btnOpenScrInIDE22;
     private javax.swing.JPanel fileLoadPanel;
-    private javax.swing.JTabbedPane jTrainerMetadata;
-    private xstandard.gui.components.combobox.ComboBoxAndSpinner trainerSelector;
+    private javax.swing.JTabbedPane jSpeciesMetadata;
+    private xstandard.gui.components.combobox.ComboBoxAndSpinner speciesSelector;
     // End of variables declaration//GEN-END:variables
 }

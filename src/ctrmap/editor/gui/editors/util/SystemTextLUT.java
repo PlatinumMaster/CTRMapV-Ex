@@ -20,6 +20,7 @@ public class SystemTextLUT {
             new AbstractMap.SimpleEntry<>("TrainerDialogue", 381),
             new AbstractMap.SimpleEntry<>("Trainers", 382),
             new AbstractMap.SimpleEntry<>("TrainerClasses", 383),
+            new AbstractMap.SimpleEntry<>("Types", 398),
             new AbstractMap.SimpleEntry<>("MovesDescriptions", 402),
             new AbstractMap.SimpleEntry<>("Moves", 403)
         )

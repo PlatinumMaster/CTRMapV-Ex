@@ -9,5 +9,9 @@ package ctrmap.formats.pokemon.gen5.pml;
  * @author L33TG
  */
 public class WBPMLLearnsets {
-    
+    private WBPMLLearnsets[] learnset;
+
+    public WBPMLLearnsets[] getMoves() { return learnset; }
+    public void setMoves(WBPMLLearnsets[] learnset) { this.learnset = learnset; }
 }
+

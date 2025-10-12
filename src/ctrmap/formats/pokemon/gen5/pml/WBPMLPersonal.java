@@ -149,4 +149,8 @@ public class WBPMLPersonal {
 
     public int[] GetSpecialTutors() { return specialTutors; }
     public void SetSpecialTutors(int[] specialTutors) { this.specialTutors = specialTutors; }
+    
+    public String toString() {
+        return new String("baseHP:" + baseHP);
+    }
 }
