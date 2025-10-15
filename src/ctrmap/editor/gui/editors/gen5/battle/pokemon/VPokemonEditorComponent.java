@@ -58,10 +58,8 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         ArrayList<String> speciesNames = new ArrayList<String>();
         DefaultComboBoxModel cbmSpecies = new DefaultComboBoxModel();
         for (int Index = 0; Index < this.PkmnNames.getLineCount(); ++Index) {
-            speciesNames.add(this.PkmnNames.getLine(Index));
+            cbmSpecies.addElement(this.PkmnNames.getLine(Index));
         }
-        
-        cbmSpecies.addAll(speciesNames);
         
         this.jSpeciesName.setText(name);
         
@@ -73,9 +71,9 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
             this.jCBType1.addItem(this.Types.getLine(Index));
             this.jCBType2.addItem(this.Types.getLine(Index));
             
-//            if (species.GetPrimaryType() == Index) {
-//                this.jCBType1.setSelectedIndex(Index);
-//            }
+            if (species.GetPrimaryType() == Index) {
+                this.jCBType1.setSelectedIndex(Index);
+            }
         }
         
         for (int Index = 1; Index < this.AbilNames.getLineCount(); ++Index) {

@@ -48,12 +48,10 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
         
         LoadAllTextArchives();
         
-        ArrayList<String> speciesNames = new ArrayList<String>();
         DefaultComboBoxModel cbm = new DefaultComboBoxModel();
         for (int Index = 0; Index < this.PkmnNames.getLineCount(); ++Index) {
-            speciesNames.add(this.PkmnNames.getLine(Index));
+             cbm.addElement(this.PkmnNames.getLine(Index));
         }
-        cbm.addAll(speciesNames);
         this.speciesSelector.getCB().setModel(cbm);
     }
     
@@ -183,8 +181,7 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
                 WBPMLPersonal pml_personal;
                 try {
                     pml_personal = this.LoadEntryViaYml(new Yaml(personal_yaml));
-                    this.jSpeciesMetadata.add(String.format("%d - %s", personalIndex, this.PkmnNames.getLine(personalIndex)),
-                            new VPokemonEditorComponent(this.Instance, pml_personal, this.PkmnNames.getLine(personalIndex)));
+                    this.jSpeciesMetadata.add(String.format("%d - %s", personalIndex, this.PkmnNames.getLine(personalIndex)), new VPokemonEditorComponent(this.Instance, pml_personal, this.PkmnNames.getLine(personalIndex)));
                 } catch (Exception ex) {
                     Logger.getLogger(VTrainerEditor.class.getName()).log(Level.SEVERE, null, ex);
                 }
