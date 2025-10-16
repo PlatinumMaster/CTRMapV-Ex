@@ -30,6 +30,7 @@ import ctrmap.editor.system.juliet.ICTRMapPlugin;
 import ctrmap.editor.system.workspace.CTRMapProject;
 import ctrmap.formats.common.GameInfo;
 import ctrmap.formats.ntr.rom.srl.NDSROM;
+import ctrmap.util.tools.VFS;
 import ctrmap.util.tools.cont.ContainerUtil;
 import java.io.IOException;
 import java.util.logging.Level;
@@ -96,37 +97,6 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 		);
 	}
 
-	private void loadVFS(MemoryFile destDir, VFSFile src) {
-		for (VFSFile child : src.listFiles()) {
-			FSFile ov = child.getOvFile();
-			FSFile base = child.getBaseFile();
-			if (base == null || !base.exists()) {
-				destDir.linkChild(new ProxyFile(ov, ov.getPathRelativeTo(src.getVFS().getOvFSRoot()))); //use entire overlay file directly
-			} else {
-				//merge ovfs into basefs
-				if (!ov.exists()) {
-					destDir.linkChild(new ProxyFile(base, base.getPathRelativeTo(src.getVFS().getBaseFSRoot())));
-				} else {
-					if (base instanceof ArcFile) {
-						ArcFile arc = (ArcFile) base;
-						ArcInput[] inputs = src.getVFS().getArcInputs(ov, ov).toArray(new ArcInput[0]);
-						if (inputs.length > 0) {
-							MemoryFile newArc = new MemoryFile(arc.getName(), arc.getBytes());
-							ArcFile newArcFileObj = new ArcFile(newArc, src.getVFS().getArcFileAccessor());
-							src.getVFS().getArcFileAccessor().writeToArcFile(newArcFileObj, null, inputs);
-							arc = newArcFileObj;
-						}
-						destDir.linkChild(new ProxyFile(arc.getSource(), base.getPathRelativeTo(src.getVFS().getBaseFSRoot())));
-					} else if (base.isDirectory()) {
-						MemoryFile subDir = destDir.createChildDir(base.getName());
-						loadVFS(subDir, child);
-					} else {
-						destDir.linkChild(new ProxyFile(ov, ov.getPathRelativeTo(src.getVFS().getOvFSRoot())));
-					}
-				}
-			}
-		}
-	}
 
 	@Override
 	public void registUI(CTRMapPluginInterface j, GameInfo game) {
@@ -148,7 +118,7 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 							proj.saveProjectData();
 
 							MemoryFile romRoot = new MemoryFile("__ROM");
-							loadVFS(romRoot, proj.wsfs.vfs.getVFSRoot());
+							VFS.load(romRoot, proj.wsfs.vfs.getVFSRoot());
 
 							try {
 								NDSROM.buildROM(romRoot, new DiskFile(path));
