@@ -151,6 +151,6 @@ public class WBPMLPersonal {
     public void SetSpecialTutors(int[] specialTutors) { this.specialTutors = specialTutors; }
     
     public String toString() {
-        return new String("baseHP:" + baseHP);
+        return new String("baseAtk:" + this.baseAttack);
     }
 }

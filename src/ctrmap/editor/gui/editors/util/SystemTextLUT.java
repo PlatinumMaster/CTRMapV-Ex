@@ -13,16 +13,18 @@ public class SystemTextLUT {
     private static final Map<String, Integer> lutMap = Stream.of(
             new AbstractMap.SimpleEntry<>("ItemDescriptions", 63), 
             new AbstractMap.SimpleEntry<>("Items", 64), 
-            new AbstractMap.SimpleEntry<>("Pokemon", 90),   
+            new AbstractMap.SimpleEntry<>("Pokemon", 90), //486
             new AbstractMap.SimpleEntry<>("BattleTypes", 357),
             new AbstractMap.SimpleEntry<>("SpecialTrainers", 368),
-            new AbstractMap.SimpleEntry<>("Abilities", 374),
+            new AbstractMap.SimpleEntry<>("Abilities", 374), //487
             new AbstractMap.SimpleEntry<>("TrainerDialogue", 381),
             new AbstractMap.SimpleEntry<>("Trainers", 382),
             new AbstractMap.SimpleEntry<>("TrainerClasses", 383),
-            new AbstractMap.SimpleEntry<>("Types", 398),
+            new AbstractMap.SimpleEntry<>("Types", 398), //489
             new AbstractMap.SimpleEntry<>("MovesDescriptions", 402),
-            new AbstractMap.SimpleEntry<>("Moves", 403)
+            new AbstractMap.SimpleEntry<>("Moves", 403), //488
+            new AbstractMap.SimpleEntry<>("DexDescriptions", 442),
+            new AbstractMap.SimpleEntry<>("DexCategories", 464)
         )
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)
     );

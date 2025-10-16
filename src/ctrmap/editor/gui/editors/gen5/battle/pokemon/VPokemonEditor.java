@@ -39,6 +39,27 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
     private CTRMap Instance;
     private TextFile PkmnNames, AbilNames, MoveNames, MoveDescs, ItemNames, ItemDescs, Learnsets, Evolutions, Types;
     
+    private enum parseType {
+            TYPE_NORMAL,
+            TYPE_FIGHTING,
+            TYPE_FLYING,
+            TYPE_POISON,
+            TYPE_GROUND,
+            TYPE_ROCK,
+            TYPE_BUG,
+            TYPE_GHOST,
+            TYPE_STEEL,
+            TYPE_FIRE,
+            TYPE_WATER,
+            TYPE_GRASS,
+            TYPE_ELECTRIC,
+            TYPE_PSYCHIC,
+            TYPE_ICE,
+            TYPE_DRAGON,
+            TYPE_DARK,
+            TYPE_FAIRY
+        }
+    
     private List<WBPMLPersonal> Pokemon;
     
     public VPokemonEditor(CTRMap Instance) {
@@ -166,7 +187,61 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
         VPokemonPersonalDataBinding personalYml = YamlReflectUtil.deserialize(yml.root.children.get(0), VPokemonPersonalDataBinding.class);
         
         WBPMLPersonal personalData = new WBPMLPersonal();
+        
+        personalData.SetBaseHP(personalYml.baseHP);
         personalData.SetBaseAttack(personalYml.baseAttack);
+        personalData.SetBaseDefense(personalYml.baseDefense);
+        personalData.SetBaseSpAttack(personalYml.baseSpAttack);
+        personalData.SetBaseSpDefense(personalYml.baseSpDefense);
+        personalData.SetBaseSpeed(personalYml.baseSpeed);
+        
+        try {
+            parseType type = parseType.valueOf(personalYml.primaryType);
+            int typeIndex = type.ordinal();
+            
+            personalData.SetPrimaryType(typeIndex);
+        } catch (IllegalArgumentException e) {
+            System.out.println("Could not parse type string with enum");
+        }
+        
+        try {
+            parseType type = parseType.valueOf(personalYml.secondaryType);
+            int typeIndex = type.ordinal();
+            
+            personalData.SetSecondaryType(typeIndex);
+        } catch (IllegalArgumentException e) {
+            System.out.println("Could not parse type string with enum");
+        }
+        
+        personalData.SetCaptureRate(personalYml.captureRate);
+        personalData.SetEvYield(personalYml.evYield);
+        personalData.SetWildItem50(personalYml.wildItem50);
+        personalData.SetWildItem5(personalYml.wildItem5);
+        personalData.SetWildItem1(personalYml.wildItem1);
+        personalData.SetGenderProbability(personalYml.genderProbability);
+        personalData.SetEggHappiness(personalYml.eggHappiness);
+        personalData.SetBaseHappiness(personalYml.baseHappiness);
+        personalData.SetExperienceGroup(personalYml.experienceGroup);
+        personalData.SetEggGroup1(personalYml.eggGroup1);
+        personalData.SetEggGroup2(personalYml.eggGroup2);
+        personalData.SetPrimaryAbility(personalYml.primaryAbility);
+        personalData.SetSecondaryAbility(personalYml.secondaryAbility);
+        personalData.SetHiddenAbility(personalYml.hiddenAbility);
+        personalData.SetEscapeRate(personalYml.escapeRate);
+        personalData.SetFormDataOffSet(personalYml.formDataOffset);
+        personalData.SetFormSpriteOffSet(personalYml.formSpriteOffset);
+        personalData.SetFormCount(personalYml.formCount);
+        personalData.SetColor(personalYml.color);
+        personalData.SetBaseExperience(personalYml.baseExperience);
+        personalData.SetHeightCm(personalYml.heightCm);
+        personalData.SetWeightCg(personalYml.weightCg);
+        personalData.SetTechnicalOrHiddenMachine1(personalYml.tmhm1);
+        personalData.SetTechnicalOrHiddenMachine2(personalYml.tmhm2);
+        personalData.SetTechnicalOrHiddenMachine3(personalYml.tmhm3);
+        personalData.SetTechnicalOrHiddenMachine4(personalYml.tmhm4);
+        personalData.SetTypeTutors(personalYml.typeTutors);
+        personalData.SetSpecialTutors(personalYml.specialTutors);
+        
         return personalData;
     }
         
@@ -181,7 +256,8 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
                 WBPMLPersonal pml_personal;
                 try {
                     pml_personal = this.LoadEntryViaYml(new Yaml(personal_yaml));
-                    this.jSpeciesMetadata.add(String.format("%d - %s", personalIndex, this.PkmnNames.getLine(personalIndex)), new VPokemonEditorComponent(this.Instance, pml_personal, this.PkmnNames.getLine(personalIndex)));
+                    String name = PkmnNames.getLine(personalIndex);
+                    this.jSpeciesMetadata.add(String.format("%d - %s", personalIndex, this.PkmnNames.getLine(personalIndex)), new VPokemonEditorComponent(this.Instance, pml_personal, personalIndex, name));
                 } catch (Exception ex) {
                     Logger.getLogger(VTrainerEditor.class.getName()).log(Level.SEVERE, null, ex);
                 }

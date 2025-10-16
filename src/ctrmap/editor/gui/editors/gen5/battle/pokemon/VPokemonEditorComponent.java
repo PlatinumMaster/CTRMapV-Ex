@@ -19,10 +19,11 @@ import javax.swing.DefaultComboBoxModel;
  * @author L33TG
  */
 public class VPokemonEditorComponent extends javax.swing.JPanel {
-    private WBPMLPersonal species;
     private CTRMap Instance;
     
-    private TextFile PkmnNames, AbilNames, MoveNames, MoveDescs, ItemNames, ItemDescs, Types;
+    private int baseHP;
+    
+    private TextFile PkmnNames, AbilNames, MoveNames, ItemNames, Types, DexCategories, DexDescription;
     
     /**
      * Creates new form VPokemonEditorComponent
@@ -43,15 +44,15 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         this.PkmnNames = LoadTextFile("Pokemon");
         this.AbilNames = LoadTextFile("Abilities");
         this.MoveNames = LoadTextFile("Moves");
+        this.ItemNames = LoadTextFile("Items");
         this.Types = LoadTextFile("Types");
+        this.DexCategories = LoadTextFile("DexCategories");
+        this.DexDescription = LoadTextFile("DexDescriptions");
     }
     
-    
-    
-    public VPokemonEditorComponent(CTRMap Instance, WBPMLPersonal species, String name) {
+    public VPokemonEditorComponent(CTRMap Instance, WBPMLPersonal species, int speciesIndex, String name) {
         initComponents();
         this.Instance = Instance;
-        this.species = species;
         
         LoadAllTextArchives();
         
@@ -61,10 +62,10 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
             cbmSpecies.addElement(this.PkmnNames.getLine(Index));
         }
         
-        this.jSpeciesName.setText(name);
+        jTFSpeciesName.setText(name);
         
         for (int Index = 1; Index < this.MoveNames.getLineCount(); ++Index) {
-            this.jCBLearnsetMove.addItem(this.MoveNames.getLine(Index));
+            this.jCBLearnsetMoves.addItem(this.MoveNames.getLine(Index));
         }
         
         for (int Index = 0; Index < this.Types.getLineCount(); ++Index) {
@@ -72,21 +73,107 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
             this.jCBType2.addItem(this.Types.getLine(Index));
             
             if (species.GetPrimaryType() == Index) {
-                this.jCBType1.setSelectedIndex(Index);
+                this.jCBType1.setSelectedIndex(Index);             
+            }
+            if (species.GetSecondaryType() == Index) {
+                this.jCBType2.setSelectedIndex(Index);
             }
         }
         
-        for (int Index = 1; Index < this.AbilNames.getLineCount(); ++Index) {
+        for (int Index = 0; Index < this.AbilNames.getLineCount(); ++Index) {
             this.jCBAbilityPrimary.addItem(this.AbilNames.getLine(Index));
             this.jCBAbilitySecondary.addItem(this.AbilNames.getLine(Index));
             this.jCBAbilityHidden.addItem(this.AbilNames.getLine(Index));
+            
+            if (species.GetPrimaryAbility() == Index) {
+                this.jCBAbilityPrimary.setSelectedIndex(Index);
+            }
+            
+            if (species.GetSecondaryAbility() == Index) {
+                this.jCBAbilitySecondary.setSelectedIndex(Index);
+            }
+            
+            if (species.GetHiddenAbility() == Index) {
+                this.jCBAbilityHidden.setSelectedIndex(Index);
+            }
         }
         
-        String speciesTest = this.species.toString();
-        System.out.println(speciesTest);
+        for (int Index = 0; Index < this.ItemNames.getLineCount(); ++Index) {
+            this.jCBWildItem50.addItem(this.ItemNames.getLine(Index));
+            this.jCBWildItem5.addItem(this.ItemNames.getLine(Index));
+            this.jCBWildItem1.addItem(this.ItemNames.getLine(Index));
+            
+            if (species.GetWildItem50() == Index) {
+                this.jCBWildItem50.setSelectedIndex(Index);
+            }
+            
+            if (species.GetWildItem5() == Index) {
+                this.jCBWildItem5.setSelectedIndex(Index);
+            }
+            
+            if (species.GetWildItem1() == Index) {
+                this.jCBWildItem1.setSelectedIndex(Index);
+            }
+        }
+        
+        jSpinnerHeightMetre.setValue(species.GetHeightCm() / 100);
+        jSpinnerHeightCentiMetre.setValue(species.GetHeightCm() / 10);
+        
+        jSpinnerWeightKilogram.setValue(species.GetWeightCg() / 10);
+        jSpinnerWeightGram.setValue(species.GetWeightCg() % 10);
+        
+        jSpinnerHP.setValue(species.GetBaseHP());
+        jSpinnerAtk.setValue(species.GetBaseAttack());
+        jSpinnerDef.setValue(species.GetBaseDefense());
+        jSpinnerSpAtk.setValue(species.GetBaseSpAttack());
+        jSpinnerSpDef.setValue(species.GetBaseSpDefense());
+        jSpinnerSpd.setValue(species.GetBaseSpeed());
+        
+        EVYield yield = decodeEV(species.GetEvYield());
+        
+        jSpinnerHPYield.setValue(yield.hp);
+        jSpinnerAtkYield.setValue(yield.atk);
+        jSpinnerDefYield.setValue(yield.def);
+        jSpinnerSpAtkYield.setValue(yield.spa);
+        jSpinnerSpDefYield.setValue(yield.spd);
+        jSpinnerSpdYield.setValue(yield.spe);
+        
+        jTFDexCategory.setText(DexCategories.getLine(speciesIndex));
+        jTXDexDesc.setText(DexDescription.getLine(speciesIndex));
+        
+        
+        
     }
     
+    /*
+    * Class for getting values from EVYield
+    */
+    public static class EVYield {
+        int hp;
+        int atk;
+        int def;
+        int spe;
+        int spa;
+        int spd;
+        boolean grounded;
+    }
     
+    /*
+    * Method for decoding values from EVYield
+    */
+    public static EVYield decodeEV(int decEVYield) {
+        EVYield evYield = new EVYield();
+        
+        evYield.hp = (decEVYield >> 0) & 0b11;
+        evYield.atk = (decEVYield >> 2) & 0b11;
+        evYield.def = (decEVYield >> 4) & 0b11;
+        evYield.spe = (decEVYield >> 6) & 0b11;
+        evYield.spa = (decEVYield >> 8) & 0b11;
+        evYield.spd = (decEVYield >> 10) & 0b11;
+        evYield.grounded = ((decEVYield >> 15) & 0b1) == 1;
+        
+        return evYield;
+    }
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -98,11 +185,6 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
     private void initComponents() {
 
         jPanel3 = new javax.swing.JPanel();
-        jPanelTypes = new javax.swing.JPanel();
-        jCBType1 = new javax.swing.JComboBox<>();
-        jCBType2 = new javax.swing.JComboBox<>();
-        jLabel8 = new javax.swing.JLabel();
-        jLabel9 = new javax.swing.JLabel();
         jPanelEVYield = new javax.swing.JPanel();
         jLabel24 = new javax.swing.JLabel();
         jLabel25 = new javax.swing.JLabel();
@@ -116,6 +198,11 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         jLabel22 = new javax.swing.JLabel();
         jSpinnerSpdYield = new javax.swing.JSpinner();
         jLabel23 = new javax.swing.JLabel();
+        jPanelTypes = new javax.swing.JPanel();
+        jCBType1 = new javax.swing.JComboBox<>();
+        jCBType2 = new javax.swing.JComboBox<>();
+        jLabel8 = new javax.swing.JLabel();
+        jLabel9 = new javax.swing.JLabel();
         jPanelAbilities = new javax.swing.JPanel();
         jCBAbilityPrimary = new javax.swing.JComboBox<>();
         jCBAbilitySecondary = new javax.swing.JComboBox<>();
@@ -126,34 +213,38 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         jPanelDex = new javax.swing.JPanel();
         jLabel10 = new javax.swing.JLabel();
         jLabel11 = new javax.swing.JLabel();
-        jDexCategory = new javax.swing.JTextField();
+        jTFDexCategory = new javax.swing.JTextField();
         jScrollPane1 = new javax.swing.JScrollPane();
-        jTextDexDesc = new javax.swing.JTextArea();
+        jTXDexDesc = new javax.swing.JTextArea();
         jLabel28 = new javax.swing.JLabel();
-        jSpinnerHeight1 = new javax.swing.JSpinner();
-        jSpinnerWeight = new javax.swing.JSpinner();
+        jSpinnerHeightMetre = new javax.swing.JSpinner();
         jLabel29 = new javax.swing.JLabel();
         jLabel30 = new javax.swing.JLabel();
         jLabel31 = new javax.swing.JLabel();
-        jSpinnerHeight2 = new javax.swing.JSpinner();
+        jSpinnerHeightCentiMetre = new javax.swing.JSpinner();
         jLabel32 = new javax.swing.JLabel();
+        jLabel39 = new javax.swing.JLabel();
+        jSpinnerWeightKilogram = new javax.swing.JSpinner();
+        jSpinnerWeightGram = new javax.swing.JSpinner();
         jPanelAbilities1 = new javax.swing.JPanel();
         jLabel13 = new javax.swing.JLabel();
         jLabelPreview = new javax.swing.JLabel();
         jLabel14 = new javax.swing.JLabel();
         jLabelPreview1 = new javax.swing.JLabel();
+        jBtnStaticSprite = new javax.swing.JButton();
+        jBtnIconSprite = new javax.swing.JButton();
         jPanel1 = new javax.swing.JPanel();
-        jSpeciesName = new javax.swing.JTextField();
+        jTFSpeciesName = new javax.swing.JTextField();
         jPanel4 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         jListLearnset = new javax.swing.JList<>();
-        jPanel9 = new javax.swing.JPanel();
-        jLabel18 = new javax.swing.JLabel();
-        jCBLearnsetMove = new javax.swing.JComboBox<>();
-        jLabel19 = new javax.swing.JLabel();
-        jSpinnerLearnsetLevel = new javax.swing.JSpinner();
-        jButtonAddLearnset = new javax.swing.JButton();
-        jButtonRemoveLearnset = new javax.swing.JButton();
+        jPanel15 = new javax.swing.JPanel();
+        jLabel47 = new javax.swing.JLabel();
+        jCBLearnsetMoves = new javax.swing.JComboBox<>();
+        jLabel48 = new javax.swing.JLabel();
+        jSpinnerLearnsetLevel6 = new javax.swing.JSpinner();
+        jBtnLearnsetAdd = new javax.swing.JButton();
+        jBtnLearnsetRemove = new javax.swing.JButton();
         jPanelEVYield1 = new javax.swing.JPanel();
         jLabel33 = new javax.swing.JLabel();
         jLabel34 = new javax.swing.JLabel();
@@ -167,48 +258,20 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         jSpinnerDef = new javax.swing.JSpinner();
         jSpinnerAtk = new javax.swing.JSpinner();
         jSpinnerHP = new javax.swing.JSpinner();
-        jButtonSave = new javax.swing.JButton();
+        jPanel5 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        jCBWildItem50 = new javax.swing.JComboBox<>();
+        jLabel2 = new javax.swing.JLabel();
+        jCBWildItem5 = new javax.swing.JComboBox<>();
+        jLabel3 = new javax.swing.JLabel();
+        jCBWildItem1 = new javax.swing.JComboBox<>();
+        jBtnApplyChanges = new javax.swing.JButton();
 
         jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("Stats"));
         jPanel3.setPreferredSize(new java.awt.Dimension(1050, 448));
 
-        jPanelTypes.setBorder(javax.swing.BorderFactory.createTitledBorder("Types"));
-
-        jLabel8.setText("Primary");
-
-        jLabel9.setText("Secondary");
-
-        javax.swing.GroupLayout jPanelTypesLayout = new javax.swing.GroupLayout(jPanelTypes);
-        jPanelTypes.setLayout(jPanelTypesLayout);
-        jPanelTypesLayout.setHorizontalGroup(
-            jPanelTypesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanelTypesLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanelTypesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jCBType1, 0, 143, Short.MAX_VALUE)
-                    .addGroup(jPanelTypesLayout.createSequentialGroup()
-                        .addGroup(jPanelTypesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel9)
-                            .addComponent(jLabel8))
-                        .addGap(0, 0, Short.MAX_VALUE))
-                    .addComponent(jCBType2, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap())
-        );
-        jPanelTypesLayout.setVerticalGroup(
-            jPanelTypesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanelTypesLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jLabel8)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jCBType1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel9)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jCBType2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
-        );
-
         jPanelEVYield.setBorder(javax.swing.BorderFactory.createTitledBorder("EV Yield"));
+        jPanelEVYield.setPreferredSize(new java.awt.Dimension(206, 220));
 
         jLabel24.setText("HP");
 
@@ -227,7 +290,7 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         jPanelEVYieldLayout.setHorizontalGroup(
             jPanelEVYieldLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanelEVYieldLayout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap(10, Short.MAX_VALUE)
                 .addGroup(jPanelEVYieldLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jLabel22, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jLabel24, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -235,7 +298,7 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
                     .addComponent(jLabel26, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jLabel27, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jLabel23, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addGap(18, 18, Short.MAX_VALUE)
+                .addGap(18, 22, Short.MAX_VALUE)
                 .addGroup(jPanelEVYieldLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jSpinnerSpdYield, javax.swing.GroupLayout.DEFAULT_SIZE, 76, Short.MAX_VALUE)
                     .addComponent(jSpinnerSpDefYield)
@@ -272,7 +335,43 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
                 .addGroup(jPanelEVYieldLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jSpinnerSpdYield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel23))
-                .addContainerGap(11, Short.MAX_VALUE))
+                .addContainerGap(16, Short.MAX_VALUE))
+        );
+
+        jPanelTypes.setBorder(javax.swing.BorderFactory.createTitledBorder("Types"));
+
+        jLabel8.setText("Primary");
+
+        jLabel9.setText("Secondary");
+
+        javax.swing.GroupLayout jPanelTypesLayout = new javax.swing.GroupLayout(jPanelTypes);
+        jPanelTypes.setLayout(jPanelTypesLayout);
+        jPanelTypesLayout.setHorizontalGroup(
+            jPanelTypesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelTypesLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanelTypesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jCBType1, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jCBType2, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(jPanelTypesLayout.createSequentialGroup()
+                        .addGroup(jPanelTypesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel8)
+                            .addComponent(jLabel9))
+                        .addGap(0, 0, Short.MAX_VALUE)))
+                .addContainerGap())
+        );
+        jPanelTypesLayout.setVerticalGroup(
+            jPanelTypesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelTypesLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel8)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jCBType1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jLabel9)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jCBType2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         jPanelAbilities.setBorder(javax.swing.BorderFactory.createTitledBorder("Abilities"));
@@ -290,33 +389,33 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
             .addGroup(jPanelAbilitiesLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanelAbilitiesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jCBAbilitySecondary, 0, 219, Short.MAX_VALUE)
-                    .addComponent(jCBAbilityPrimary, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jCBAbilityPrimary, 0, 184, Short.MAX_VALUE)
+                    .addComponent(jCBAbilitySecondary, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jCBAbilityHidden, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(jPanelAbilitiesLayout.createSequentialGroup()
                         .addGroup(jPanelAbilitiesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel17)
                             .addComponent(jLabel15)
-                            .addComponent(jLabel16))
-                        .addGap(0, 0, Short.MAX_VALUE))
-                    .addComponent(jCBAbilityHidden, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addComponent(jLabel16)
+                            .addComponent(jLabel17))
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         jPanelAbilitiesLayout.setVerticalGroup(
             jPanelAbilitiesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanelAbilitiesLayout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(12, 12, 12)
                 .addComponent(jLabel15)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jCBAbilityPrimary, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGap(18, 18, 18)
                 .addComponent(jLabel16)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jCBAbilitySecondary, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 13, Short.MAX_VALUE)
+                .addGap(18, 18, 18)
                 .addComponent(jLabel17)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jCBAbilityHidden, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         jPanelDex.setBorder(javax.swing.BorderFactory.createTitledBorder("Pokédex Data"));
@@ -325,19 +424,31 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
 
         jLabel11.setText("Description");
 
-        jTextDexDesc.setColumns(20);
-        jTextDexDesc.setRows(5);
-        jScrollPane1.setViewportView(jTextDexDesc);
+        jTXDexDesc.setColumns(20);
+        jTXDexDesc.setRows(5);
+        jScrollPane1.setViewportView(jTXDexDesc);
 
         jLabel28.setText("Height");
 
+        jSpinnerHeightMetre.setMinimumSize(new java.awt.Dimension(70, 26));
+        jSpinnerHeightMetre.setPreferredSize(new java.awt.Dimension(70, 26));
+
         jLabel29.setText("Weight");
 
-        jLabel30.setText("ft");
+        jLabel30.setText("m");
 
-        jLabel31.setText("lbs");
+        jLabel31.setText("kg");
 
-        jLabel32.setText("in");
+        jSpinnerHeightCentiMetre.setMinimumSize(new java.awt.Dimension(70, 26));
+        jSpinnerHeightCentiMetre.setPreferredSize(new java.awt.Dimension(70, 26));
+
+        jLabel32.setText(",");
+
+        jLabel39.setText(",");
+
+        jSpinnerWeightKilogram.setPreferredSize(new java.awt.Dimension(70, 26));
+
+        jSpinnerWeightGram.setPreferredSize(new java.awt.Dimension(70, 26));
 
         javax.swing.GroupLayout jPanelDexLayout = new javax.swing.GroupLayout(jPanelDex);
         jPanelDex.setLayout(jPanelDexLayout);
@@ -353,21 +464,26 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
                 .addGap(18, 18, 18)
                 .addGroup(jPanelDexLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jScrollPane1)
-                    .addComponent(jDexCategory)
+                    .addComponent(jTFDexCategory)
                     .addGroup(jPanelDexLayout.createSequentialGroup()
-                        .addGroup(jPanelDexLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(jSpinnerHeight1, javax.swing.GroupLayout.DEFAULT_SIZE, 86, Short.MAX_VALUE)
-                            .addComponent(jSpinnerWeight))
+                        .addGroup(jPanelDexLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jSpinnerWeightKilogram, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jSpinnerHeightMetre, javax.swing.GroupLayout.PREFERRED_SIZE, 68, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanelDexLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(jPanelDexLayout.createSequentialGroup()
-                                .addComponent(jLabel30)
-                                .addGap(18, 18, 18)
-                                .addComponent(jSpinnerHeight2, javax.swing.GroupLayout.PREFERRED_SIZE, 86, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jLabel39)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jLabel32))
-                            .addComponent(jLabel31))
-                        .addGap(0, 0, Short.MAX_VALUE)))
+                                .addComponent(jSpinnerWeightGram, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jLabel31))
+                            .addGroup(jPanelDexLayout.createSequentialGroup()
+                                .addComponent(jLabel32)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jSpinnerHeightCentiMetre, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jLabel30)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         jPanelDexLayout.setVerticalGroup(
@@ -375,7 +491,7 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
             .addGroup(jPanelDexLayout.createSequentialGroup()
                 .addGroup(jPanelDexLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel10)
-                    .addComponent(jDexCategory, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jTFDexCategory, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanelDexLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanelDexLayout.createSequentialGroup()
@@ -384,20 +500,22 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
                     .addComponent(jScrollPane1))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanelDexLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jSpinnerHeight1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jSpinnerHeightMetre, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel28)
                     .addComponent(jLabel30)
-                    .addComponent(jSpinnerHeight2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel32))
+                    .addComponent(jLabel32)
+                    .addComponent(jSpinnerHeightCentiMetre, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanelDexLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jSpinnerWeight, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel29)
-                    .addComponent(jLabel31))
+                    .addComponent(jLabel31)
+                    .addComponent(jLabel39)
+                    .addComponent(jSpinnerWeightKilogram, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jSpinnerWeightGram, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap())
         );
 
-        jPanelAbilities1.setBorder(javax.swing.BorderFactory.createTitledBorder("Preview"));
+        jPanelAbilities1.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         jPanelAbilities1.setName(""); // NOI18N
 
         jLabel13.setText("Static Sprite Preview");
@@ -414,30 +532,47 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         jLabelPreview1.setText("Preview Here");
         jLabelPreview1.setOpaque(true);
 
+        jBtnStaticSprite.setText("Change Static Sprite");
+        jBtnStaticSprite.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jBtnStaticSpriteActionPerformed(evt);
+            }
+        });
+
+        jBtnIconSprite.setText("Change Icon Sprite");
+
         javax.swing.GroupLayout jPanelAbilities1Layout = new javax.swing.GroupLayout(jPanelAbilities1);
         jPanelAbilities1.setLayout(jPanelAbilities1Layout);
         jPanelAbilities1Layout.setHorizontalGroup(
             jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanelAbilities1Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jLabel13)
-                    .addComponent(jLabelPreview, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabelPreview, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jBtnStaticSprite, javax.swing.GroupLayout.DEFAULT_SIZE, 148, Short.MAX_VALUE))
+                .addGap(18, 18, 18)
+                .addGroup(jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jLabel14)
-                    .addComponent(jLabelPreview1, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabelPreview1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jBtnIconSprite, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanelAbilities1Layout.setVerticalGroup(
             jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanelAbilities1Layout.createSequentialGroup()
-                .addComponent(jLabel13)
+                .addGroup(jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel13)
+                    .addComponent(jLabel14))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabelPreview, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jLabel14)
+                .addGroup(jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jLabelPreview, javax.swing.GroupLayout.DEFAULT_SIZE, 148, Short.MAX_VALUE)
+                    .addComponent(jLabelPreview1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabelPreview1, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(14, Short.MAX_VALUE))
+                .addGroup(jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jBtnStaticSprite)
+                    .addComponent(jBtnIconSprite))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Species Name"));
@@ -448,14 +583,14 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jSpeciesName, javax.swing.GroupLayout.DEFAULT_SIZE, 337, Short.MAX_VALUE)
+                .addComponent(jTFSpeciesName)
                 .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jSpeciesName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jTFSpeciesName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -463,60 +598,59 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
 
         jScrollPane2.setViewportView(jListLearnset);
 
-        jPanel9.setBorder(javax.swing.BorderFactory.createTitledBorder("Entry"));
+        jPanel15.setBorder(javax.swing.BorderFactory.createTitledBorder("Entry"));
 
-        jLabel18.setText("Move");
+        jLabel47.setText("Move");
 
-        jLabel19.setText("Level");
+        jLabel48.setText("Level");
 
-        jButtonAddLearnset.setText("Add");
-        jButtonAddLearnset.addActionListener(new java.awt.event.ActionListener() {
+        jBtnLearnsetAdd.setText("Add");
+        jBtnLearnsetAdd.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonAddLearnsetActionPerformed(evt);
+                jBtnLearnsetAddActionPerformed(evt);
             }
         });
 
-        jButtonRemoveLearnset.setText("Remove");
-        jButtonRemoveLearnset.addActionListener(new java.awt.event.ActionListener() {
+        jBtnLearnsetRemove.setText("Remove");
+        jBtnLearnsetRemove.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonRemoveLearnsetActionPerformed(evt);
+                jBtnLearnsetRemoveActionPerformed(evt);
             }
         });
 
-        javax.swing.GroupLayout jPanel9Layout = new javax.swing.GroupLayout(jPanel9);
-        jPanel9.setLayout(jPanel9Layout);
-        jPanel9Layout.setHorizontalGroup(
-            jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel9Layout.createSequentialGroup()
+        javax.swing.GroupLayout jPanel15Layout = new javax.swing.GroupLayout(jPanel15);
+        jPanel15.setLayout(jPanel15Layout);
+        jPanel15Layout.setHorizontalGroup(
+            jPanel15Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel15Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jButtonAddLearnset, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jButtonRemoveLearnset, javax.swing.GroupLayout.DEFAULT_SIZE, 178, Short.MAX_VALUE)
-                    .addComponent(jCBLearnsetMove, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jSpinnerLearnsetLevel)
-                    .addGroup(jPanel9Layout.createSequentialGroup()
-                        .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel18)
-                            .addComponent(jLabel19))
+                .addGroup(jPanel15Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jBtnLearnsetAdd, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jBtnLearnsetRemove, javax.swing.GroupLayout.DEFAULT_SIZE, 178, Short.MAX_VALUE)
+                    .addComponent(jCBLearnsetMoves, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jSpinnerLearnsetLevel6)
+                    .addGroup(jPanel15Layout.createSequentialGroup()
+                        .addGroup(jPanel15Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel47)
+                            .addComponent(jLabel48))
                         .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
-        jPanel9Layout.setVerticalGroup(
-            jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel9Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jLabel18)
+        jPanel15Layout.setVerticalGroup(
+            jPanel15Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel15Layout.createSequentialGroup()
+                .addComponent(jLabel47)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jCBLearnsetMove, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jCBLearnsetMoves, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel19)
+                .addComponent(jLabel48)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jSpinnerLearnsetLevel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jButtonAddLearnset)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jButtonRemoveLearnset)
-                .addContainerGap())
+                .addComponent(jSpinnerLearnsetLevel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jBtnLearnsetAdd)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jBtnLearnsetRemove)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
@@ -525,21 +659,22 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel4Layout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 170, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 186, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jPanel9, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jPanel15, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
         jPanel4Layout.setVerticalGroup(
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel4Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jScrollPane2)
-                .addContainerGap())
-            .addComponent(jPanel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jScrollPane2)
+                    .addComponent(jPanel15, javax.swing.GroupLayout.PREFERRED_SIZE, 191, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         jPanelEVYield1.setBorder(javax.swing.BorderFactory.createTitledBorder("Base Stats"));
+        jPanelEVYield1.setPreferredSize(new java.awt.Dimension(206, 220));
 
         jLabel33.setText("HP");
 
@@ -603,15 +738,50 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
                 .addGroup(jPanelEVYield1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel38)
                     .addComponent(jSpinnerSpd, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(11, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        jButtonSave.setText("Save");
-        jButtonSave.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonSaveActionPerformed(evt);
-            }
-        });
+        jPanel5.setBorder(javax.swing.BorderFactory.createTitledBorder("Item"));
+
+        jLabel1.setText("Wild Item (50% Chance)");
+
+        jLabel2.setText("Wild Item (5% Chance)");
+
+        jLabel3.setText("Wild Item (1% Chance)");
+
+        javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
+        jPanel5.setLayout(jPanel5Layout);
+        jPanel5Layout.setHorizontalGroup(
+            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel5Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel1)
+                    .addComponent(jCBWildItem50, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 96, Short.MAX_VALUE)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel2)
+                    .addComponent(jCBWildItem5, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 96, Short.MAX_VALUE)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jCBWildItem1, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel3))
+                .addContainerGap())
+        );
+        jPanel5Layout.setVerticalGroup(
+            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel5Layout.createSequentialGroup()
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel1)
+                    .addComponent(jLabel2)
+                    .addComponent(jLabel3))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jCBWildItem50, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jCBWildItem5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jCBWildItem1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
@@ -619,58 +789,55 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jButtonSave, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addComponent(jPanelAbilities1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addGroup(jPanel3Layout.createSequentialGroup()
-                                        .addComponent(jPanelTypes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                        .addComponent(jPanelAbilities, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                    .addComponent(jPanelDex, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                            .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addComponent(jPanelEVYield1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jPanelEVYield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
-                .addContainerGap(54, Short.MAX_VALUE))
+                            .addComponent(jPanelAbilities, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jPanelTypes, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jPanelEVYield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jPanelEVYield1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jPanelDex, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                    .addComponent(jPanel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(18, 18, 18)
+                .addComponent(jPanelAbilities1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(129, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel3Layout.createSequentialGroup()
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addGroup(jPanel3Layout.createSequentialGroup()
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel3Layout.createSequentialGroup()
                         .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jPanelAbilities1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addGap(67, 67, 67)
-                                .addComponent(jPanelTypes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(jPanelAbilities, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jPanelDex, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jPanelEVYield1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jPanelEVYield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jButtonSave)
-                .addContainerGap(25, Short.MAX_VALUE))
+                        .addComponent(jPanelTypes, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(jPanelEVYield1, javax.swing.GroupLayout.DEFAULT_SIZE, 221, Short.MAX_VALUE)
+                    .addComponent(jPanel4, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanelAbilities1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(18, 18, 18)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jPanelEVYield, javax.swing.GroupLayout.DEFAULT_SIZE, 231, Short.MAX_VALUE)
+                    .addComponent(jPanelAbilities, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanelDex, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(36, 36, 36))
         );
 
         jPanelAbilities1.getAccessibleContext().setAccessibleName("panelPreview");
         jPanelAbilities1.getAccessibleContext().setAccessibleDescription("");
+
+        jBtnApplyChanges.setText("Apply Changes");
+        jBtnApplyChanges.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jBtnApplyChangesActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -678,54 +845,56 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, 1104, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(361, Short.MAX_VALUE))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jBtnApplyChanges, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, 1365, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, 567, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(217, Short.MAX_VALUE))
+                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, 592, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jBtnApplyChanges)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 
-    private void jButtonRemoveLearnsetActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRemoveLearnsetActionPerformed
+    private void jBtnApplyChangesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jBtnApplyChangesActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_jButtonRemoveLearnsetActionPerformed
+    }//GEN-LAST:event_jBtnApplyChangesActionPerformed
 
-    private void jButtonAddLearnsetActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonAddLearnsetActionPerformed
+    private void jBtnLearnsetAddActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jBtnLearnsetAddActionPerformed
         // TODO add your handling code here:
-        int selectedMoveIndex = this.jCBLearnsetMove.getSelectedIndex() + 1;
-        int moveLearnLevel = (int) this.jSpinnerLearnsetLevel.getValue();
-        if (moveLearnLevel > 100) {
-            this.jSpinnerLearnsetLevel.setValue(100);
-            moveLearnLevel = 100;
-        } else if (moveLearnLevel < 1) {
-            this.jSpinnerLearnsetLevel.setValue(1);
-            moveLearnLevel = 1;
-        }
         
-        
-        System.out.println(selectedMoveIndex);
-    }//GEN-LAST:event_jButtonAddLearnsetActionPerformed
+    }//GEN-LAST:event_jBtnLearnsetAddActionPerformed
 
-    private void jButtonSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonSaveActionPerformed
+    private void jBtnLearnsetRemoveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jBtnLearnsetRemoveActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_jButtonSaveActionPerformed
+    }//GEN-LAST:event_jBtnLearnsetRemoveActionPerformed
+
+    private void jBtnStaticSpriteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jBtnStaticSpriteActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jBtnStaticSpriteActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButtonAddLearnset;
-    private javax.swing.JButton jButtonRemoveLearnset;
-    private javax.swing.JButton jButtonSave;
+    private javax.swing.JButton jBtnApplyChanges;
+    private javax.swing.JButton jBtnIconSprite;
+    private javax.swing.JButton jBtnLearnsetAdd;
+    private javax.swing.JButton jBtnLearnsetRemove;
+    private javax.swing.JButton jBtnStaticSprite;
     private javax.swing.JComboBox<String> jCBAbilityHidden;
     private javax.swing.JComboBox<String> jCBAbilityPrimary;
     private javax.swing.JComboBox<String> jCBAbilitySecondary;
-    private javax.swing.JComboBox<String> jCBLearnsetMove;
+    private javax.swing.JComboBox<String> jCBLearnsetMoves;
     private javax.swing.JComboBox<String> jCBType1;
     private javax.swing.JComboBox<String> jCBType2;
-    private javax.swing.JTextField jDexCategory;
+    private javax.swing.JComboBox<String> jCBWildItem1;
+    private javax.swing.JComboBox<String> jCBWildItem5;
+    private javax.swing.JComboBox<String> jCBWildItem50;
+    private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel13;
@@ -733,8 +902,7 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel15;
     private javax.swing.JLabel jLabel16;
     private javax.swing.JLabel jLabel17;
-    private javax.swing.JLabel jLabel18;
-    private javax.swing.JLabel jLabel19;
+    private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel22;
     private javax.swing.JLabel jLabel23;
     private javax.swing.JLabel jLabel24;
@@ -743,6 +911,7 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel27;
     private javax.swing.JLabel jLabel28;
     private javax.swing.JLabel jLabel29;
+    private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel30;
     private javax.swing.JLabel jLabel31;
     private javax.swing.JLabel jLabel32;
@@ -752,15 +921,19 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel36;
     private javax.swing.JLabel jLabel37;
     private javax.swing.JLabel jLabel38;
+    private javax.swing.JLabel jLabel39;
+    private javax.swing.JLabel jLabel47;
+    private javax.swing.JLabel jLabel48;
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
     private javax.swing.JLabel jLabelPreview;
     private javax.swing.JLabel jLabelPreview1;
     private javax.swing.JList<String> jListLearnset;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel15;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
-    private javax.swing.JPanel jPanel9;
+    private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanelAbilities;
     private javax.swing.JPanel jPanelAbilities1;
     private javax.swing.JPanel jPanelDex;
@@ -769,23 +942,25 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
     private javax.swing.JPanel jPanelTypes;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JTextField jSpeciesName;
     private javax.swing.JSpinner jSpinnerAtk;
     private javax.swing.JSpinner jSpinnerAtkYield;
     private javax.swing.JSpinner jSpinnerDef;
     private javax.swing.JSpinner jSpinnerDefYield;
     private javax.swing.JSpinner jSpinnerHP;
     private javax.swing.JSpinner jSpinnerHPYield;
-    private javax.swing.JSpinner jSpinnerHeight1;
-    private javax.swing.JSpinner jSpinnerHeight2;
-    private javax.swing.JSpinner jSpinnerLearnsetLevel;
+    private javax.swing.JSpinner jSpinnerHeightCentiMetre;
+    private javax.swing.JSpinner jSpinnerHeightMetre;
+    private javax.swing.JSpinner jSpinnerLearnsetLevel6;
     private javax.swing.JSpinner jSpinnerSpAtk;
     private javax.swing.JSpinner jSpinnerSpAtkYield;
     private javax.swing.JSpinner jSpinnerSpDef;
     private javax.swing.JSpinner jSpinnerSpDefYield;
     private javax.swing.JSpinner jSpinnerSpd;
     private javax.swing.JSpinner jSpinnerSpdYield;
-    private javax.swing.JSpinner jSpinnerWeight;
-    private javax.swing.JTextArea jTextDexDesc;
+    private javax.swing.JSpinner jSpinnerWeightGram;
+    private javax.swing.JSpinner jSpinnerWeightKilogram;
+    private javax.swing.JTextField jTFDexCategory;
+    private javax.swing.JTextField jTFSpeciesName;
+    private javax.swing.JTextArea jTXDexDesc;
     // End of variables declaration//GEN-END:variables
 }
