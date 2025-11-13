@@ -118,6 +118,7 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
         
         // Build a WBTrainer object.
         WBTrainerData trData = new WBTrainerData();
+        
         trData.SetAssignedClass(trDataYml.trainerClass);
         trData.SetBattleType(trDataYml.battleType);
         

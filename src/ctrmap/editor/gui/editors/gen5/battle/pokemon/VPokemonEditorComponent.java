@@ -1,18 +1,19 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
- */
 package ctrmap.editor.gui.editors.gen5.battle.pokemon;
 
 import ctrmap.editor.CTRMap;
 import ctrmap.editor.gui.editors.util.SystemTextLUT;
 import ctrmap.editor.gui.editors.util.TextSingleton;
+import ctrmap.formats.pokemon.gen5.pml.WBPMLLearnsets;
 import ctrmap.formats.pokemon.gen5.pml.WBPMLPersonal;
 import ctrmap.formats.pokemon.text.TextFile;
 import ctrmap.missioncontrol_ntr.fs.NARCRef;
 import ctrmap.missioncontrol_ntr.fs.NTRGameFS;
 import java.util.ArrayList;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListModel;
+import javax.swing.JList;
+import xstandard.formats.yaml.Yaml;
+import xstandard.formats.yaml.YamlReflectUtil;
 
 /**
  *
@@ -20,8 +21,6 @@ import javax.swing.DefaultComboBoxModel;
  */
 public class VPokemonEditorComponent extends javax.swing.JPanel {
     private CTRMap Instance;
-    
-    private int baseHP;
     
     private TextFile PkmnNames, AbilNames, MoveNames, ItemNames, Types, DexCategories, DexDescription;
     
@@ -50,7 +49,7 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         this.DexDescription = LoadTextFile("DexDescriptions");
     }
     
-    public VPokemonEditorComponent(CTRMap Instance, WBPMLPersonal species, int speciesIndex, String name) {
+    public VPokemonEditorComponent(CTRMap Instance, WBPMLPersonal species, WBPMLLearnsets learnset, int speciesIndex, String name) {
         initComponents();
         this.Instance = Instance;
         
@@ -58,6 +57,8 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         
         ArrayList<String> speciesNames = new ArrayList<String>();
         DefaultComboBoxModel cbmSpecies = new DefaultComboBoxModel();
+        DefaultListModel listLearnset = new DefaultListModel();
+        
         for (int Index = 0; Index < this.PkmnNames.getLineCount(); ++Index) {
             cbmSpecies.addElement(this.PkmnNames.getLine(Index));
         }
@@ -141,8 +142,13 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         jTFDexCategory.setText(DexCategories.getLine(speciesIndex));
         jTXDexDesc.setText(DexDescription.getLine(speciesIndex));
         
+        //jListLearnset
+        for (int Index = 0; Index < learnset.GetLearnsetSize(); ++Index) {
+            listLearnset.addElement(learnset.GetLevelUpMove(Index));
+            System.out.println("" + learnset.printMoveName(Index));
+        }
         
-        
+        jListLearnset = new JList(listLearnset);
     }
     
     /*

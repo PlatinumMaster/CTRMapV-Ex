@@ -1,17 +1,35 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package ctrmap.formats.pokemon.gen5.pml;
 
-/**
- *
- * @author L33TG
- */
+import java.io.DataInput;
+import java.io.IOException;
+import java.util.ArrayList;
+
 public class WBPMLLearnsets {
-    private WBPMLLearnsets[] learnset;
-
-    public WBPMLLearnsets[] getMoves() { return learnset; }
-    public void setMoves(WBPMLLearnsets[] learnset) { this.learnset = learnset; }
+    public static final int MOVES_COUNT_MAX = 26;
+    ArrayList<WBPMLLevelUpMove> LevelUpMoves;
+    
+    public WBPMLLearnsets() {
+        LevelUpMoves = new ArrayList<>();
+    }
+    
+    public WBPMLLearnsets(DataInput in, DataInput LevelUpMove) throws IOException {
+        this();
+        
+    }
+    
+    public int GetLearnsetSize() {
+        return this.LevelUpMoves.size();
+    }
+    
+    public WBPMLLevelUpMove GetLevelUpMove(int Index) {
+        return Index < GetLearnsetSize() ? this.LevelUpMoves.get(Index) : null;
+    }
+    
+    public void addLevelUpMove(WBPMLLevelUpMove move) {
+        this.LevelUpMoves.add(move);
+    }
+    
+    public String printMoveName(int Index) {
+        return this.LevelUpMoves.get(Index).GetMoveName();
+    }
 }
-
