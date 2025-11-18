@@ -4,5 +4,5 @@ import xstandard.formats.yaml.YamlNodeName;
 
 public class VPokemonLearnsetDataBinding {
     @YamlNodeName("LEARNSET")
-    public VPokemonLearnsetEntryDataBinding learnset[];
+    public VPokemonLearnsetEntryDataBinding[] Learnsets;
 }
