@@ -12,9 +12,11 @@ public class WBPMLLearnsets {
         LevelUpMoves = new ArrayList<>();
     }
     
-    public WBPMLLearnsets(DataInput in, DataInput LevelUpMove) throws IOException {
+    public WBPMLLearnsets(WBPMLLevelUpMove move) throws IOException {
         this();
         
+        LevelUpMoves.add(move);
+
     }
     
     public int GetLearnsetSize() {
@@ -23,6 +25,12 @@ public class WBPMLLearnsets {
     
     public WBPMLLevelUpMove GetLevelUpMove(int Index) {
         return Index < GetLearnsetSize() ? this.LevelUpMoves.get(Index) : null;
+    }
+    
+    public void SetLevelUpMove(int MoveIndex, WBPMLLevelUpMove move) {
+        if (LevelUpMoves.size() < 26) {
+            LevelUpMoves.set(MoveIndex, move);
+        }
     }
     
     public void addLevelUpMove(WBPMLLevelUpMove move) {
