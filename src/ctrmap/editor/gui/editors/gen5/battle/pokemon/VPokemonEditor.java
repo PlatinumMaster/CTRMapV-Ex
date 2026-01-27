@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
- */
 package ctrmap.editor.gui.editors.gen5.battle.pokemon;
 
 import ctrmap.editor.CTRMap;
@@ -38,7 +34,7 @@ import xstandard.formats.yaml.YamlReflectUtil;
 import xstandard.fs.FSFile;
 
 public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbedEditor {
-    private CTRMap Instance;
+    private final CTRMap Instance;
     private TextFile PkmnNames, AbilNames, MoveNames, MoveDescs, ItemNames, ItemDescs, Learnsets, Evolutions, Types;
     
     private enum parseType {
@@ -261,42 +257,60 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
         YamlNode entries = yml.root.children.get(0);
         
         // Iterate through children and bind.
-        ArrayList<VPokemonLearnsetEntryDataBinding> learnset_moves = new ArrayList<>();
+        ArrayList<VPokemonLearnsetEntryDataBinding> learnset_entries = new ArrayList<>();
         for (YamlNode entry : entries.children) {
-            learnset_moves.add(YamlReflectUtil.deserialize(entry, VPokemonLearnsetEntryDataBinding.class));
+            learnset_entries.add(YamlReflectUtil.deserialize(entry, VPokemonLearnsetEntryDataBinding.class));
         }
         
-        return null;
+        ArrayList<WBPMLLevelUpMove> learnset_moves = new ArrayList<>();
+        for (VPokemonLearnsetEntryDataBinding entry : learnset_entries) {
+            WBPMLLevelUpMove move = new WBPMLLevelUpMove(entry.move, entry.level);
+            learnset_moves.add(move);
+        }
+        
+        WBPMLLearnsets learnset_Out = new WBPMLLearnsets();
+        for (WBPMLLevelUpMove move : learnset_moves) {
+            learnset_Out.addLevelUpMove(move);
+        }
+        
+        return learnset_Out;
     }
         
     private void btnOpenScrInIDE22ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenScrInIDE22ActionPerformed
         // Check if the user directory exists.
         FSFile pml_personal_user_directory = Instance.getProject().userData.getUserDataDir(UserData.UsrDirectory.PML_PERSONAL);
-        FSFile learnset_data_user_directory = Instance.getProject().userData.getUserDataDir(UserData.UsrDirectory.PML_LEARNSETS);
+        FSFile pml_learnset_user_directory = Instance.getProject().userData.getUserDataDir(UserData.UsrDirectory.LEARNSET_DATA);
+        
         int personalIndex = speciesSelector.getValueSpinner();
         String personal_yaml_name = String.format("%d.yml", personalIndex);
-        String learnset_yaml_name = String.format("%d.yml", personalIndex);
         
-        if (pml_personal_user_directory.exists() && pml_personal_user_directory.getChildCount() > 0) {
-            FSFile personal_yaml = pml_personal_user_directory.getChild(personal_yaml_name);
-            FSFile learnset_yaml = learnset_data_user_directory.getChild(learnset_yaml_name);
-            if (personal_yaml.exists()) {
-                if (learnset_yaml.exists()) {
-                WBPMLPersonal pml_personal;
-                WBPMLLearnsets pml_learnset;
-                    try {
-                        pml_personal = this.LoadPersonalViaYml(new Yaml(personal_yaml));
-                        pml_learnset = this.LoadLearnsetViaYml(new Yaml(learnset_yaml));
-                        String speciesName = PkmnNames.getLine(personalIndex);
+        //Learnset YAML gets initialized with the personal YAML value for possible future edits
+        String learnset_yaml_name = personal_yaml_name;
+        
+        if (pml_personal_user_directory.exists() && pml_learnset_user_directory.exists()) {
+            if (pml_personal_user_directory.getChildCount() > 0 && pml_learnset_user_directory.getChildCount() > 0) { 
+            
+                FSFile personal_yaml = pml_personal_user_directory.getChild(personal_yaml_name);
+                FSFile learnset_yaml = pml_learnset_user_directory.getChild(learnset_yaml_name);
+                
+                if (personal_yaml.exists() && learnset_yaml.exists()) {
                         
-                        this.jSpeciesMetadata.add(String.format("%d - %s", personalIndex, this.PkmnNames.getLine(personalIndex)), new VPokemonEditorComponent(this.Instance, pml_personal, pml_learnset, personalIndex, speciesName));
-                    } catch (Exception ex) {
-                        Logger.getLogger(VTrainerEditor.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                }
-            } else {
-                System.out.println("Did not find YAML");
-            } 
+                        WBPMLPersonal pml_personal;
+                        WBPMLLearnsets pml_learnset;
+                        
+                        try {
+                            pml_personal = this.LoadPersonalViaYml(new Yaml(personal_yaml));
+                            pml_learnset = this.LoadLearnsetViaYml(new Yaml(learnset_yaml));
+                            String speciesName = PkmnNames.getLine(personalIndex);
+
+                            this.jSpeciesMetadata.add(String.format("%d - %s", personalIndex, this.PkmnNames.getLine(personalIndex)), new VPokemonEditorComponent(this.Instance, pml_personal, pml_learnset, personalIndex, speciesName));
+                        } catch (Exception ex) {
+                            Logger.getLogger(VTrainerEditor.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                } else {
+                    System.out.println("Did not find YAML!");
+                } 
+            }
         }
     }//GEN-LAST:event_btnOpenScrInIDE22ActionPerformed
 
