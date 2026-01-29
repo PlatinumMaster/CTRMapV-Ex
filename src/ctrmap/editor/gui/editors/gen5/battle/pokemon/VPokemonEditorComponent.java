@@ -152,15 +152,15 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         jSpinnerHPYield.setValue(yield.hp);
         jSpinnerAtkYield.setValue(yield.atk);
         jSpinnerDefYield.setValue(yield.def);
-        jSpinnerSpAtkYield.setValue(yield.spa);
-        jSpinnerSpDefYield.setValue(yield.spd);
-        jSpinnerSpdYield.setValue(yield.spe);
+        jSpinnerSpAYield.setValue(yield.spa);
+        jSpinnerSpDYield.setValue(yield.spd);
+        jSpinnerSpeYield.setValue(yield.spe);
         
         jTFDexCategory.setText(DexCategories.getLine(speciesIndex));
-        jTXDexDesc.setText(DexDescription.getLine(speciesIndex));
+        jTFDexDesc.setText(DexDescription.getLine(speciesIndex));
         
         if (learnset != null) {
-            listLearnset = new ArrayList<WBPMLLevelUpMove>();
+            listLearnset = new ArrayList<>();
             
             for (int Index = 0; Index < learnset.GetLearnsetSize(); ++Index) {
                 
@@ -187,14 +187,17 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
             System.out.println("The learnset is empty!");
         }
         
+        jSpinnerLearnsetLevel.setValue(1);
+        
         //Hide new editor panel
         jPanel2.setVisible(false);
+        jPanelSprites1.setVisible(false);
     }
     
     /*
     * Class for getting values from EVYield
     */
-    public static class EVYield {
+    private static class EVYield {
         int hp;
         int atk;
         int def;
@@ -207,7 +210,7 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
     /*
     * Method for decoding values from EVYield
     */
-    public static EVYield decodeEV(int decEVYield) {
+    private static EVYield decodeEV(int decEVYield) {
         EVYield evYield = new EVYield();
         
         evYield.hp = (decEVYield >> 0) & 0b11;
@@ -221,7 +224,24 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         return evYield;
     }
     
-    public String MoveFriendlyName(String moveName) {
+    private static int encodeEV(EVYield evYield) {
+    int decEVYield = 0;
+
+    decEVYield |= (evYield.hp  & 0b11) << 0;
+    decEVYield |= (evYield.atk & 0b11) << 2;
+    decEVYield |= (evYield.def & 0b11) << 4;
+    decEVYield |= (evYield.spe & 0b11) << 6;
+    decEVYield |= (evYield.spa & 0b11) << 8;
+    decEVYield |= (evYield.spd & 0b11) << 10;
+
+    if (evYield.grounded) {
+        decEVYield |= 1 << 15;
+    }
+
+    return decEVYield;
+} 
+    
+    private String MoveFriendlyName(String moveName) {
         String moveFriendlyName = "error";
 
         for (int Index = 1; Index < this.MoveNames.getLineCount(); Index++) {
@@ -235,14 +255,14 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         return moveFriendlyName;
     }
     
-    public String MoveYAMLName (String moveFriendlyName) {
+    private String MoveYAMLName (String moveFriendlyName) {
         String moveYAMLName = "MOVE_ERROR";
+        String moveFriendlyNameCut = moveFriendlyName.replaceAll(", Lv\\d$", "");
         
-        for (int Index = 1; Index < this.MoveNames.getLineCount(); Index++) {
-            for (WBPMLLevelUpMoveNames moveNameEnum : WBPMLLevelUpMoveNames.values()) {
-                if (moveFriendlyName.equalsIgnoreCase(moveNameEnum.getMoveNameFriendly())) {
-                    moveYAMLName = moveNameEnum.name();
-                }
+        for (WBPMLLevelUpMoveNames moveNameEnum : WBPMLLevelUpMoveNames.values()) {
+            if (moveNameEnum.getMoveNameFriendly().equalsIgnoreCase(moveFriendlyNameCut)) {
+                moveYAMLName = moveNameEnum.name();
+                break;
             }
         }
         
@@ -267,10 +287,10 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         jSpinnerAtkYield = new javax.swing.JSpinner();
         jSpinnerDefYield = new javax.swing.JSpinner();
         jLabel27 = new javax.swing.JLabel();
-        jSpinnerSpAtkYield = new javax.swing.JSpinner();
-        jSpinnerSpDefYield = new javax.swing.JSpinner();
+        jSpinnerSpAYield = new javax.swing.JSpinner();
+        jSpinnerSpDYield = new javax.swing.JSpinner();
         jLabel22 = new javax.swing.JLabel();
-        jSpinnerSpdYield = new javax.swing.JSpinner();
+        jSpinnerSpeYield = new javax.swing.JSpinner();
         jLabel23 = new javax.swing.JLabel();
         jPanelTypes = new javax.swing.JPanel();
         jCBType1 = new javax.swing.JComboBox<>();
@@ -289,7 +309,7 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         jLabel11 = new javax.swing.JLabel();
         jTFDexCategory = new javax.swing.JTextField();
         jScrollPane1 = new javax.swing.JScrollPane();
-        jTXDexDesc = new javax.swing.JTextArea();
+        jTFDexDesc = new javax.swing.JTextArea();
         jLabel28 = new javax.swing.JLabel();
         jSpinnerHeightMetre = new javax.swing.JSpinner();
         jLabel29 = new javax.swing.JLabel();
@@ -300,7 +320,7 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         jLabel39 = new javax.swing.JLabel();
         jSpinnerWeightKilogram = new javax.swing.JSpinner();
         jSpinnerWeightGram = new javax.swing.JSpinner();
-        jPanelAbilities1 = new javax.swing.JPanel();
+        jPanelSprites1 = new javax.swing.JPanel();
         jLabel13 = new javax.swing.JLabel();
         jLabelPreview = new javax.swing.JLabel();
         jLabel14 = new javax.swing.JLabel();
@@ -379,9 +399,9 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
                     .addComponent(jLabel23, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addGap(18, 22, Short.MAX_VALUE)
                 .addGroup(jPanelEVYieldLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jSpinnerSpdYield, javax.swing.GroupLayout.DEFAULT_SIZE, 76, Short.MAX_VALUE)
-                    .addComponent(jSpinnerSpDefYield)
-                    .addComponent(jSpinnerSpAtkYield)
+                    .addComponent(jSpinnerSpeYield, javax.swing.GroupLayout.DEFAULT_SIZE, 76, Short.MAX_VALUE)
+                    .addComponent(jSpinnerSpDYield)
+                    .addComponent(jSpinnerSpAYield)
                     .addComponent(jSpinnerDefYield)
                     .addComponent(jSpinnerAtkYield)
                     .addComponent(jSpinnerHPYield))
@@ -404,15 +424,15 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
                     .addComponent(jLabel26))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanelEVYieldLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jSpinnerSpAtkYield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jSpinnerSpAYield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel27))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanelEVYieldLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jSpinnerSpDefYield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jSpinnerSpDYield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel22))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanelEVYieldLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jSpinnerSpdYield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jSpinnerSpeYield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel23))
                 .addContainerGap(16, Short.MAX_VALUE))
         );
@@ -503,9 +523,9 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
 
         jLabel11.setText("Description");
 
-        jTXDexDesc.setColumns(20);
-        jTXDexDesc.setRows(5);
-        jScrollPane1.setViewportView(jTXDexDesc);
+        jTFDexDesc.setColumns(20);
+        jTFDexDesc.setRows(5);
+        jScrollPane1.setViewportView(jTFDexDesc);
 
         jLabel28.setText("Height");
 
@@ -593,8 +613,8 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
                 .addContainerGap())
         );
 
-        jPanelAbilities1.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
-        jPanelAbilities1.setName(""); // NOI18N
+        jPanelSprites1.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
+        jPanelSprites1.setName(""); // NOI18N
 
         jLabel13.setText("Static Sprite Preview");
 
@@ -619,35 +639,35 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
 
         jBtnIconSprite.setText("Change Icon Sprite");
 
-        javax.swing.GroupLayout jPanelAbilities1Layout = new javax.swing.GroupLayout(jPanelAbilities1);
-        jPanelAbilities1.setLayout(jPanelAbilities1Layout);
-        jPanelAbilities1Layout.setHorizontalGroup(
-            jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanelAbilities1Layout.createSequentialGroup()
+        javax.swing.GroupLayout jPanelSprites1Layout = new javax.swing.GroupLayout(jPanelSprites1);
+        jPanelSprites1.setLayout(jPanelSprites1Layout);
+        jPanelSprites1Layout.setHorizontalGroup(
+            jPanelSprites1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelSprites1Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(jPanelSprites1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jLabel13)
                     .addComponent(jLabelPreview, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jBtnStaticSprite, javax.swing.GroupLayout.DEFAULT_SIZE, 148, Short.MAX_VALUE))
                 .addGap(18, 18, 18)
-                .addGroup(jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(jPanelSprites1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jLabel14)
                     .addComponent(jLabelPreview1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jBtnIconSprite, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
-        jPanelAbilities1Layout.setVerticalGroup(
-            jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanelAbilities1Layout.createSequentialGroup()
-                .addGroup(jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+        jPanelSprites1Layout.setVerticalGroup(
+            jPanelSprites1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelSprites1Layout.createSequentialGroup()
+                .addGroup(jPanelSprites1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel13)
                     .addComponent(jLabel14))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(jPanelSprites1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jLabelPreview, javax.swing.GroupLayout.DEFAULT_SIZE, 148, Short.MAX_VALUE)
                     .addComponent(jLabelPreview1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanelAbilities1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                .addGroup(jPanelSprites1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jBtnStaticSprite)
                     .addComponent(jBtnIconSprite))
                 .addContainerGap(26, Short.MAX_VALUE))
@@ -948,7 +968,7 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jPanelAbilities1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(jPanelSprites1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
@@ -963,7 +983,7 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
                     .addComponent(jPanelDex, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
                         .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(jPanelAbilities1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(jPanelSprites1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel3Layout.createSequentialGroup()
@@ -977,8 +997,8 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
                 .addContainerGap())
         );
 
-        jPanelAbilities1.getAccessibleContext().setAccessibleName("panelPreview");
-        jPanelAbilities1.getAccessibleContext().setAccessibleDescription("");
+        jPanelSprites1.getAccessibleContext().setAccessibleName("panelPreview");
+        jPanelSprites1.getAccessibleContext().setAccessibleDescription("");
         jPanel2.getAccessibleContext().setAccessibleName("Misc");
 
         jBtnApplyChanges1.setText("Apply Changes");
@@ -1011,45 +1031,90 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
         );
     }// </editor-fold>//GEN-END:initComponents
 
-    private void jBtnLearnsetAddActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jBtnLearnsetAddActionPerformed
-        String selectedMove = (String) jCBLearnsetMoves.getModel().getSelectedItem();
-        JOptionPane messageDialog = new JOptionPane();
-        List<String> jListOld = new ArrayList<String>();
-        List<String> jListSorted = new ArrayList<String>();
-        int moveLevel = 0;
+    /**
+     * Method to sort the jList where the learnset is loaded in
+     * @param moveList
+     * @return 
+     */
+    private static List<String> bubblesortLearnsetList(List<String> moveList) {
+        List<String> moveLevelList;
+        int tempNumber;
+        String tempEntry;
         
-        if ((int) jSpinnerLearnsetLevel.getModel().getValue() <= 0) {
-            JOptionPane.showMessageDialog(jPanelTypes, (String) "The level has to be a number between 1-100!");
-            jSpinnerLearnsetLevel.getModel().setValue(1);
-        } else if ((int) jSpinnerLearnsetLevel.getModel().getValue() > 100) {
-            JOptionPane.showMessageDialog(jPanelTypes, (String) "The level has to be a number between 1-100!");
-            jSpinnerLearnsetLevel.getModel().setValue(100);
+        moveLevelList = cutMoveEntriesToLevel(moveList);
+        
+        for (int i = 1; i < moveList.size(); i++) {
+            for (int j = 0; j < (moveList.size() - 1); j++) {
+                if (Integer.parseInt(moveLevelList.get(j)) > Integer.parseInt(moveLevelList.get(j+1))) {
+                    tempNumber = Integer.parseInt(moveLevelList.get(j));
+                    tempEntry = moveList.get(j);
+                    
+                    moveLevelList.set(j, moveLevelList.get(j+1));
+                    moveList.set(j, moveList.get(j+1));
+                    
+                    moveLevelList.set(j+1, String.valueOf(tempNumber));
+                    moveList.set(j+1, tempEntry);
+                }
+            }
         }
+        return moveList;
+    }
+    
+    private static List<String> cutMoveEntriesToLevel(List<String> moveList) {
+        List<String> moveLevelList = new ArrayList<>();
+        List<String> moveListTemp = new ArrayList<>();
         
-        int selectedMoveLevel = (int) jSpinnerLearnsetLevel.getModel().getValue();
+        moveListTemp.addAll(moveList);
         
-        jList1Model.addElement(selectedMove + ", Lv" + selectedMoveLevel);
-        
-        for (int Index = 0; Index < jList1Model.size(); Index++) {
-            jListOld.add(jList1Model.elementAt(Index));
-        }
-        
-        for (String s : jListOld) {
-            if (s.contains("Conversion 2")) {
-                s.replace("Conversion 2", "");
-            } else {
-               moveLevel = Integer.parseInt(s.replaceAll("[\\D]", "")); 
+        for (int Index = 0; Index < moveListTemp.size(); Index++) {
+            if (moveListTemp.get(Index).contains("Conversion 2")) {
+                String tempString = moveListTemp.get(Index);
+                
+                moveListTemp.set(Index, tempString.replace("Conversion 2", ""));
             }
             
-            System.out.println(moveLevel);
+            String tempString = moveListTemp.get(Index);
+            
+            moveLevelList.add(tempString.replaceAll("[\\D]", ""));            
+        }
+        
+        return moveLevelList;
+    }
+    
+    private void jBtnLearnsetAddActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jBtnLearnsetAddActionPerformed
+        if (jList1Model.getSize() < 26) {
+            String selectedMove = (String) jCBLearnsetMoves.getModel().getSelectedItem();
+            List<String> jListMoves = new ArrayList<>();
+            List<String> jListMovesSorted;
+        
+            if ((int) jSpinnerLearnsetLevel.getModel().getValue() <= 0) {
+                JOptionPane.showMessageDialog(null, "The minimum level is 1!");
+                jSpinnerLearnsetLevel.getModel().setValue(1);
+            } else if ((int) jSpinnerLearnsetLevel.getModel().getValue() > 100) {
+                JOptionPane.showMessageDialog(null, "The maximum level is 100!");
+                jSpinnerLearnsetLevel.getModel().setValue(100);
+            }
+        
+            int selectedMoveLevel = (int) jSpinnerLearnsetLevel.getModel().getValue();
+        
+            jList1Model.addElement(selectedMove + ", Lv" + selectedMoveLevel);
+        
+            for (int Index = 0; Index < jList1Model.size(); Index++) {
+                jListMoves.add(jList1Model.elementAt(Index));    
+            }
+        
+            jListMovesSorted = bubblesortLearnsetList(jListMoves);
+        
+            jList1Model.clear();
+            jList1Model.addAll(jListMovesSorted);
+        } else {
+            JOptionPane.showMessageDialog(null, "The learnset can't contain more than 26 entries!");
         }
     }//GEN-LAST:event_jBtnLearnsetAddActionPerformed
 
     private void jBtnLearnsetRemoveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jBtnLearnsetRemoveActionPerformed
-        String selectedMoveFriendly = jList1.getSelectedValue();
-        String selectedMoveYAML = MoveYAMLName(selectedMoveFriendly);
-        
-        System.out.println(selectedMoveYAML);
+        int selectedEntryIndex = jList1.getSelectedIndex();
+        jList1Model.remove(selectedEntryIndex);
     }//GEN-LAST:event_jBtnLearnsetRemoveActionPerformed
 
     private void jBtnStaticSpriteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jBtnStaticSpriteActionPerformed
@@ -1057,7 +1122,72 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
     }//GEN-LAST:event_jBtnStaticSpriteActionPerformed
 
     private void jBtnApplyChanges1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jBtnApplyChanges1ActionPerformed
-        // TODO add your handling code here:
+        for (int Index = 0; Index < jList1.getModel().getSize(); Index++) {
+            System.out.println(MoveYAMLName(jList1.getModel().getElementAt(Index)));
+        } 
+//        String speciesName = jTFSpeciesName.getText();
+//        
+//        String typePrimary = (String) jCBType1.getModel().getSelectedItem();
+//        String typeSecondary = (String) jCBType2.getModel().getSelectedItem();
+//        
+//        String abilityPrimary = (String) jCBAbilityPrimary.getModel().getSelectedItem();
+//        String abilitySecondary = (String) jCBAbilitySecondary.getModel().getSelectedItem();
+//        String abilityHidden = (String) jCBAbilityHidden.getModel().getSelectedItem();
+//        
+//        int baseHP = (int) jSpinnerHP.getModel().getValue();
+//        int baseAtk = (int) jSpinnerAtk.getModel().getValue();
+//        int baseDef = (int) jSpinnerDef.getModel().getValue();
+//        int baseSpA = (int) jSpinnerSpAtk.getModel().getValue();
+//        int baseSpD = (int) jSpinnerSpDef.getModel().getValue();
+//        int baseSpe = (int) jSpinnerSpd.getModel().getValue();
+//        
+//        EVYield evYield = new EVYield();
+//        evYield.hp = (int) jSpinnerHPYield.getModel().getValue();
+//        evYield.atk = (int) jSpinnerAtkYield.getModel().getValue();
+//        evYield.def = (int) jSpinnerDefYield.getModel().getValue();
+//        evYield.spa = (int) jSpinnerSpAYield.getModel().getValue();
+//        evYield.spd = (int) jSpinnerSpDYield.getModel().getValue();
+//        evYield.spe = (int) jSpinnerSpeYield.getModel().getValue();
+//        
+//        int encEVYield = encodeEV(evYield);
+//        
+//        String dexCategory = jTFDexCategory.getText();
+//        String dexDescription = jTFDexDesc.getText();
+//        
+//        int height = 0;
+//        height += ((int)jSpinnerHeightMetre.getModel().getValue() * 100);
+//        height += ((int)jSpinnerHeightCentiMetre.getModel().getValue() * 10);
+//        
+//        int weight = 0;
+//        weight += ((int)jSpinnerWeightKilogram.getModel().getValue() * 10);
+//        weight += ((int)jSpinnerWeightGram.getModel().getValue());
+//        
+//        int wildItem50Index = jCBWildItem50.getSelectedIndex();
+//        int wildItem5Index = jCBWildItem5.getSelectedIndex();
+//        int wildItem1Index = jCBWildItem1.getSelectedIndex();
+//        
+//        JOptionPane.showConfirmDialog(null, "Are the following values okay?\n\n"
+//                + "Species Name: " + speciesName + "\n"
+//                + "Primary Type: " + typePrimary + "\n"
+//                + "Secondary Type: " + typeSecondary + "\n\n"
+//                + "Primary Ability: " + abilityPrimary + "\n\n"
+//                + "Secondary Ability: " + abilitySecondary + "\n\n"
+//                + "Hidden Ability: " + abilityHidden + "\n\n" 
+//                + "Base HP: " + baseHP + "\n"
+//                + "Base Atk:" + baseAtk + "\n"
+//                + "Base Def: " + baseDef + "\n"
+//                + "Base SpA: " + baseSpA + "\n"
+//                + "Base SpD: " + baseSpD + "\n"
+//                + "Base Spe: " + baseSpe + "\n\n"
+//                + "Encoded EVYield: " + encEVYield + "\n\n"
+//                + "Height: " + height + "cm\n"
+//                + "Weight: " + weight + "cg\n"
+//                + "Index Item 50%: " + wildItem50Index + "\n"
+//                + "Index Item 5%: " + wildItem5Index + "\n"
+//                + "Index Item 1%: " + wildItem1Index + "\n\n\n"
+//                + "Dex Category: " + dexCategory + "\n\n"
+//                + "Dex Description:\n" + dexDescription + "\n\n",
+//                "Confirm Changes", JOptionPane.YES_NO_OPTION);
     }//GEN-LAST:event_jBtnApplyChanges1ActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
@@ -1143,10 +1273,10 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
     private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanelAbilities;
-    private javax.swing.JPanel jPanelAbilities1;
     private javax.swing.JPanel jPanelDex;
     private javax.swing.JPanel jPanelEVYield;
     private javax.swing.JPanel jPanelEVYield1;
+    private javax.swing.JPanel jPanelSprites1;
     private javax.swing.JPanel jPanelTypes;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
@@ -1159,16 +1289,16 @@ public class VPokemonEditorComponent extends javax.swing.JPanel {
     private javax.swing.JSpinner jSpinnerHeightCentiMetre;
     private javax.swing.JSpinner jSpinnerHeightMetre;
     private javax.swing.JSpinner jSpinnerLearnsetLevel;
+    private javax.swing.JSpinner jSpinnerSpAYield;
     private javax.swing.JSpinner jSpinnerSpAtk;
-    private javax.swing.JSpinner jSpinnerSpAtkYield;
+    private javax.swing.JSpinner jSpinnerSpDYield;
     private javax.swing.JSpinner jSpinnerSpDef;
-    private javax.swing.JSpinner jSpinnerSpDefYield;
     private javax.swing.JSpinner jSpinnerSpd;
-    private javax.swing.JSpinner jSpinnerSpdYield;
+    private javax.swing.JSpinner jSpinnerSpeYield;
     private javax.swing.JSpinner jSpinnerWeightGram;
     private javax.swing.JSpinner jSpinnerWeightKilogram;
     private javax.swing.JTextField jTFDexCategory;
+    private javax.swing.JTextArea jTFDexDesc;
     private javax.swing.JTextField jTFSpeciesName;
-    private javax.swing.JTextArea jTXDexDesc;
     // End of variables declaration//GEN-END:variables
 }
