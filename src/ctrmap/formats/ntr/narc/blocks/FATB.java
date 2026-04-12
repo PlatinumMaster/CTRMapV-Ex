@@ -32,7 +32,9 @@ public class FATB {
 		int targetEntry = arcInput.getTargetEntryNum();
 
 		while (targetEntry >= entries.size()) {
-			entries.add(new DataInfo());
+			DataInfo e = new DataInfo();
+			e.startOffset = entries.get(entries.size()-1).endOffset;
+			entries.add(e);
 			sectionSize += DataInfo.BYTES;
 		}
 
