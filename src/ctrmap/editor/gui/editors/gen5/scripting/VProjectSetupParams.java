@@ -7,6 +7,8 @@ import ctrmap.formats.common.GameInfo;
 import ctrmap.scriptformats.gen5.VCommandDataBase;
 import ctrmap.scriptformats.gen5.VDecompiler;
 import ctrmap.scriptformats.gen5.VScriptFile;
+import ctrmap.scriptformats.gen5.disasm.DisassembledCall;
+import ctrmap.scriptformats.gen5.disasm.DisassembledMethod;
 import ctrmap.scriptformats.gen5.disasm.VDisassembler;
 import xstandard.gui.DialogUtils;
 import xstandard.text.FormattingUtils;
@@ -51,7 +53,27 @@ public class VProjectSetupParams {
                                 disassembler.disassemble();
                                 try {
                                         StringBuilder sb = new StringBuilder();
-                                        sb.append(disassembler.dump());
+                                        sb.append("// Disassembled output\n\n");
+                                        for (DisassembledMethod method : disassembler.methods) {
+                                                sb.append("// Method: ").append(method.getName());
+                                                sb.append(" (ptr=0x").append(Integer.toHexString(method.ptr)).append(")\n");
+                                                for (DisassembledCall call : method.instructions) {
+                                                        if (call.label != null) {
+                                                                sb.append(call.label).append(":\n");
+                                                        }
+                                                        sb.append("  ");
+                                                        if (call.command != null) {
+                                                                sb.append(call.command.name);
+                                                        } else {
+                                                                sb.append("unknown_cmd");
+                                                        }
+                                                        for (int arg : call.args) {
+                                                                sb.append(" ").append(arg);
+                                                        }
+                                                        sb.append("\n");
+                                                }
+                                                sb.append("\n");
+                                        }
                                         return sb.toString().getBytes();
                                 } catch (Exception ex) {
                                         ex.printStackTrace();

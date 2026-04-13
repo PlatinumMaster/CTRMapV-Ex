@@ -2,6 +2,7 @@ package ctrmap.formats.pokemon.gen5.mapmatrix;
 
 import xstandard.fs.FSFile;
 import xstandard.io.base.impl.ext.data.DataInStream;
+import xstandard.io.base.impl.ext.data.DataIOStream;
 import xstandard.util.ResizeableMatrix;
 import java.awt.Dimension;
 import java.awt.Point;
@@ -95,8 +96,44 @@ public class VMapMatrix {
 	public int getWidth(){
 		return chunkIds.getWidth();
 	}
-	
+
 	public int getHeight(){
 		return chunkIds.getHeight();
+	}
+
+	public void write() {
+		if (source != null) {
+			write(source);
+		}
+	}
+
+	public void write(FSFile f) {
+		try {
+			DataIOStream dos = new DataIOStream();
+			dos.writeInt(hasZones ? 1 : 0);
+			int width = chunkIds.getWidth();
+			int height = chunkIds.getHeight();
+			dos.writeShort(width);
+			dos.writeShort(height);
+			for (int i = 0; i < height; i++) {
+				for (int j = 0; j < width; j++) {
+					dos.writeInt(chunkIds.get(j, i));
+				}
+			}
+			if (hasZones) {
+				if (zoneIds == null) {
+					zoneIds = new ResizeableMatrix<>(width, height, -1);
+				}
+				for (int i = 0; i < height; i++) {
+					for (int j = 0; j < width; j++) {
+						dos.writeInt(zoneIds.get(j, i));
+					}
+				}
+			}
+			dos.close();
+			f.setBytes(dos.toByteArray());
+		} catch (IOException ex) {
+			Logger.getLogger(VMapMatrix.class.getName()).log(Level.SEVERE, null, ex);
+		}
 	}
 }

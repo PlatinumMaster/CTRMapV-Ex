@@ -236,7 +236,7 @@ public class VScriptEditor extends javax.swing.JPanel implements AbstractTabbedE
         if (Mode == ScriptOpenMode.DECOMPILE) {  
             extension = LangConstants.LANG_SOURCE_FILE_EXTENSION;
         } else {  
-            extension = LangConstants.LANG_RAW_FILE_EXTENSION;
+            extension = ".asm";
         }
         
         IDEFile f = this.cm.ideHelper.getScriptByProject(this.setupParams, ideProject, String.format( "%s%s", this.setupParams.getMainClassName(), extension));
