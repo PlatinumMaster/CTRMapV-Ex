@@ -9,6 +9,7 @@ import ctrmap.scriptformats.gen5.VDecompiler;
 import ctrmap.scriptformats.gen5.VScriptFile;
 import ctrmap.scriptformats.gen5.disasm.DisassembledCall;
 import ctrmap.scriptformats.gen5.disasm.DisassembledMethod;
+import ctrmap.scriptformats.gen5.disasm.LinkPrototype;
 import ctrmap.scriptformats.gen5.disasm.VDisassembler;
 import xstandard.gui.DialogUtils;
 import xstandard.text.FormattingUtils;
@@ -54,11 +55,27 @@ public class VProjectSetupParams {
                                 try {
                                         StringBuilder sb = new StringBuilder();
                                         sb.append("// Disassembled output\n\n");
+
+                                        // Build map of instruction pointer -> all public labels
+                                        java.util.List<LinkPrototype> pubs = disassembler.getPublics();
+                                        java.util.Map<Integer, java.util.List<String>> publicLabels = new java.util.LinkedHashMap<>();
+                                        for (int pi = 0; pi < pubs.size(); pi++) {
+                                                int targetPtr = pubs.get(pi).targetOffset;
+                                                publicLabels.computeIfAbsent(targetPtr, k -> new java.util.ArrayList<>()).add("main_" + (pi + 1));
+                                        }
+
                                         for (DisassembledMethod method : disassembler.methods) {
-                                                sb.append("// Method: ").append(method.getName());
-                                                sb.append(" (ptr=0x").append(Integer.toHexString(method.ptr)).append(")\n");
+                                                sb.append("// Method (ptr=0x").append(Integer.toHexString(method.ptr)).append(")\n");
                                                 for (DisassembledCall call : method.instructions) {
-                                                        if (call.label != null) {
+                                                        // Emit all public labels that target this instruction
+                                                        java.util.List<String> pubLabels = publicLabels.get(call.pointer);
+                                                        if (pubLabels != null) {
+                                                                for (String pl : pubLabels) {
+                                                                        sb.append(pl).append(":\n");
+                                                                }
+                                                        }
+                                                        // Emit the instruction's own label (LABEL_xxxx, sub_xxxx) if different from publics
+                                                        if (call.label != null && (pubLabels == null || !pubLabels.contains(call.label))) {
                                                                 sb.append(call.label).append(":\n");
                                                         }
                                                         sb.append("  ");
@@ -67,8 +84,16 @@ public class VProjectSetupParams {
                                                         } else {
                                                                 sb.append("unknown_cmd");
                                                         }
-                                                        for (int arg : call.args) {
-                                                                sb.append(" ").append(arg);
+                                                        for (int i = 0; i < call.args.length; i++) {
+                                                                if (call.link != null && call.link.argIdx == i && call.link.target != null) {
+                                                                        DisassembledCall target = (DisassembledCall) call.link.target;
+                                                                        if (target.label == null) {
+                                                                                target.label = "LABEL_" + FormattingUtils.getStrWithLeadingZeros(4, Integer.toHexString(target.pointer));
+                                                                        }
+                                                                        sb.append(" ").append(target.label);
+                                                                } else {
+                                                                        sb.append(" ").append(call.args[i]);
+                                                                }
                                                         }
                                                         sb.append("\n");
                                                 }

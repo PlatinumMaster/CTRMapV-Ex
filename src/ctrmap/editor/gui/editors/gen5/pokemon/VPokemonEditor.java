@@ -1,689 +1,749 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
- */
 package ctrmap.editor.gui.editors.gen5.pokemon;
 
+import ctrmap.editor.CTRMap;
 import ctrmap.editor.gui.editors.common.AbstractTabbedEditor;
 import ctrmap.editor.system.workspace.CTRMapProject;
 import ctrmap.formats.common.GameInfo;
-import ctrmap.formats.common.GameInfoListener;
-import ctrmap.missioncontrol_base.debug.IMCDebugger;
-import java.util.Collection;
+import ctrmap.formats.pokemon.gen5.battle.evolution.WBEvolutionData;
+import ctrmap.formats.pokemon.gen5.battle.evolution.WBEvolutionData.WBEvolutionEntry;
+import ctrmap.formats.pokemon.gen5.battle.learnset.WBLearnsetData;
+import ctrmap.formats.pokemon.gen5.battle.learnset.WBLearnsetData.WBLearnsetEntry;
+import ctrmap.formats.pokemon.gen5.battle.personal.WBPersonalData;
+import ctrmap.formats.pokemon.text.GenVMessageHandler;
+import ctrmap.formats.pokemon.text.TextFile;
+import ctrmap.missioncontrol_ntr.VLaunchpad;
+import ctrmap.missioncontrol_ntr.fs.NARCRef;
+import ctrmap.missioncontrol_ntr.fs.NTRGameFS;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.*;
+import javax.swing.event.*;
+import javax.swing.table.*;
+import xstandard.fs.FSFile;
+import xstandard.io.base.impl.ext.data.DataIOStream;
 
-public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbedEditor {
+public class VPokemonEditor extends JPanel implements AbstractTabbedEditor {
 
-    /**
-     * Creates new form VPokemonEditor
-     */
-    public VPokemonEditor() {
-        initComponents();
+    private CTRMap Instance;
+    private TextFile PkmnNames, ItemNames, MoveNames, AbilNames;
+    private List<WBPersonalData> PersonalData;
+    private List<WBLearnsetData> Learnsets;
+    private List<WBEvolutionData> Evolutions;
+    private int currentPokemonIndex = -1;
+    private boolean updatingUI = false;
+
+    // Type names (Gen 5 order)
+    private static final String[] TYPE_NAMES = {
+        "Normal", "Fighting", "Flying", "Poison", "Ground", "Rock",
+        "Bug", "Ghost", "Steel", "Fire", "Water", "Grass",
+        "Electric", "Psychic", "Ice", "Dragon", "Dark"
+    };
+
+    private static final String[] STAT_NAMES = {"HP", "Attack", "Defense", "Speed", "Sp. Attack", "Sp. Defense"};
+
+    private static final String[] EGG_GROUP_NAMES = {
+        "---", "Monster", "Water 1", "Bug", "Flying", "Field",
+        "Fairy", "Grass", "Human-Like", "Water 3", "Mineral",
+        "Amorphous", "Water 2", "Ditto", "Dragon", "Undiscovered"
+    };
+
+    private static final String[] EXP_GROWTH_NAMES = {
+        "Medium Fast", "Erratic", "Fluctuating", "Medium Slow", "Fast", "Slow"
+    };
+
+    // UI components
+    private JComboBox<String> pokemonSelector;
+    private JButton saveButton;
+
+    // Stats tab
+    private JSpinner[] baseStatSpinners = new JSpinner[6];
+    private JComboBox<String> type1Combo, type2Combo;
+    private JSpinner[] evYieldSpinners = new JSpinner[6];
+    private JComboBox<String> ability1Combo, ability2Combo, hiddenAbilityCombо;
+    private JSpinner catchRateSpinner, genderRatioSpinner, baseHappinessSpinner;
+    private JSpinner hatchStepsSpinner, baseExpSpinner, heightSpinner, weightSpinner;
+    private JComboBox<String> eggGroup1Combo, eggGroup2Combo, expGrowthCombo;
+    private JComboBox<String> wildItem1Combo, wildItem2Combo, wildItem3Combo;
+
+    // Learnset tab
+    private DefaultTableModel learnsetTableModel;
+    private JTable learnsetTable;
+    private JComboBox<String> learnsetMoveCombo;
+    private JSpinner learnsetLevelSpinner;
+
+    // Evolution tab
+    private JSpinner[] evoMethodSpinners = new JSpinner[WBEvolutionData.MAX_SLOTS];
+    private JSpinner[] evoParamSpinners = new JSpinner[WBEvolutionData.MAX_SLOTS];
+    private JComboBox<String>[] evoTargetCombos = new JComboBox[WBEvolutionData.MAX_SLOTS];
+
+    // TM tab
+    private JCheckBox[] tmCheckboxes;
+
+    public VPokemonEditor(CTRMap Instance) {
+        this.Instance = Instance;
+        this.PersonalData = new ArrayList<>();
+        this.Learnsets = new ArrayList<>();
+        this.Evolutions = new ArrayList<>();
+
+        setLayout(new BorderLayout(4, 4));
+        setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+
+        // North: selector + save
+        JPanel topPanel = new JPanel(new BorderLayout(8, 0));
+        topPanel.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
+
+        pokemonSelector = new JComboBox<>();
+        pokemonSelector.setMaximumRowCount(20);
+        pokemonSelector.addActionListener(e -> {
+            if (!updatingUI) {
+                int sel = pokemonSelector.getSelectedIndex();
+                if (sel >= 0 && sel < PersonalData.size()) {
+                    currentPokemonIndex = sel;
+                    UI_LoadPokemon();
+                }
+            }
+        });
+
+        saveButton = new JButton("Save");
+        saveButton.addActionListener(e -> SaveCurrentPokemon());
+
+        topPanel.add(new JLabel("Pokemon: "), BorderLayout.WEST);
+        topPanel.add(pokemonSelector, BorderLayout.CENTER);
+        topPanel.add(saveButton, BorderLayout.EAST);
+        add(topPanel, BorderLayout.NORTH);
+
+        // Center: tabbed pane
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Stats", CreateStatsPanel());
+        tabs.addTab("Learnset", CreateLearnsetPanel());
+        tabs.addTab("Evolution", CreateEvolutionPanel());
+        tabs.addTab("TM Compatibility", CreateTMPanel());
+        add(tabs, BorderLayout.CENTER);
     }
 
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
-    @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
-    private void initComponents() {
+    // ======================== PANEL CREATION ========================
 
-        jPanel3 = new javax.swing.JPanel();
-        jLabel1 = new javax.swing.JLabel();
-        jPanel2 = new javax.swing.JPanel();
-        jLabel2 = new javax.swing.JLabel();
-        jLabel3 = new javax.swing.JLabel();
-        jSpinner1 = new javax.swing.JSpinner();
-        jSpinner2 = new javax.swing.JSpinner();
-        jLabel4 = new javax.swing.JLabel();
-        jLabel5 = new javax.swing.JLabel();
-        jLabel6 = new javax.swing.JLabel();
-        jLabel7 = new javax.swing.JLabel();
-        jSpinner3 = new javax.swing.JSpinner();
-        jSpinner4 = new javax.swing.JSpinner();
-        jSpinner5 = new javax.swing.JSpinner();
-        jSpinner6 = new javax.swing.JSpinner();
-        jPanel5 = new javax.swing.JPanel();
-        jComboBox1 = new javax.swing.JComboBox<>();
-        jComboBox2 = new javax.swing.JComboBox<>();
-        jLabel8 = new javax.swing.JLabel();
-        jLabel9 = new javax.swing.JLabel();
-        jPanel6 = new javax.swing.JPanel();
-        jLabel22 = new javax.swing.JLabel();
-        jLabel23 = new javax.swing.JLabel();
-        jSpinner10 = new javax.swing.JSpinner();
-        jSpinner11 = new javax.swing.JSpinner();
-        jSpinner12 = new javax.swing.JSpinner();
-        jLabel24 = new javax.swing.JLabel();
-        jSpinner19 = new javax.swing.JSpinner();
-        jLabel25 = new javax.swing.JLabel();
-        jSpinner20 = new javax.swing.JSpinner();
-        jSpinner21 = new javax.swing.JSpinner();
-        jLabel26 = new javax.swing.JLabel();
-        jLabel27 = new javax.swing.JLabel();
-        jPanel7 = new javax.swing.JPanel();
-        jComboBox3 = new javax.swing.JComboBox<>();
-        jComboBox4 = new javax.swing.JComboBox<>();
-        jComboBox5 = new javax.swing.JComboBox<>();
-        jPanel8 = new javax.swing.JPanel();
-        jLabel10 = new javax.swing.JLabel();
-        jLabel11 = new javax.swing.JLabel();
-        jTextField2 = new javax.swing.JTextField();
-        jScrollPane1 = new javax.swing.JScrollPane();
-        jTextArea1 = new javax.swing.JTextArea();
-        jLabel28 = new javax.swing.JLabel();
-        jSpinner22 = new javax.swing.JSpinner();
-        jSpinner23 = new javax.swing.JSpinner();
-        jLabel29 = new javax.swing.JLabel();
-        jLabel30 = new javax.swing.JLabel();
-        jLabel31 = new javax.swing.JLabel();
-        jSpinner24 = new javax.swing.JSpinner();
-        jLabel32 = new javax.swing.JLabel();
-        jTextField1 = new javax.swing.JTextField();
-        jPanel4 = new javax.swing.JPanel();
-        jScrollPane2 = new javax.swing.JScrollPane();
-        jList1 = new javax.swing.JList<>();
-        jPanel9 = new javax.swing.JPanel();
-        jLabel18 = new javax.swing.JLabel();
-        jComboBox6 = new javax.swing.JComboBox<>();
-        jLabel19 = new javax.swing.JLabel();
-        jSpinner7 = new javax.swing.JSpinner();
-        jButton1 = new javax.swing.JButton();
-        jButton2 = new javax.swing.JButton();
+    private JComponent CreateStatsPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(2, 4, 2, 4);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("Stats"));
+        // Base Stats section
+        JPanel baseStatsPanel = new JPanel(new GridLayout(6, 2, 4, 2));
+        baseStatsPanel.setBorder(BorderFactory.createTitledBorder("Base Stats"));
+        for (int i = 0; i < 6; i++) {
+            baseStatsPanel.add(new JLabel(STAT_NAMES[i]));
+            baseStatSpinners[i] = new JSpinner(new SpinnerNumberModel(0, 0, 255, 1));
+            final int idx = i;
+            baseStatSpinners[i].addChangeListener(e -> {
+                if (!updatingUI) {
+                    WBPersonalData pd = GetCurrentPersonal();
+                    if (pd != null) pd.SetBaseStat(idx, (int) baseStatSpinners[idx].getValue());
+                }
+            });
+            baseStatsPanel.add(baseStatSpinners[i]);
+        }
 
-        jLabel1.setBackground(new java.awt.Color(102, 102, 102));
-        jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel1.setText("Preview Here");
-        jLabel1.setOpaque(true);
-
-        jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Base Stats"));
-
-        jLabel2.setText("HP");
-
-        jLabel3.setText("Attack");
-
-        jLabel4.setText("Defense");
-
-        jLabel5.setText("Special Attack");
-
-        jLabel6.setText("Special Defense");
-
-        jLabel7.setText("Speed");
-
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel3)
-                            .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(66, 66, 66)
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jSpinner2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jSpinner1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel5)
-                            .addComponent(jLabel4))
-                        .addGap(26, 26, 26)
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jSpinner4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jSpinner3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel6)
-                            .addComponent(jLabel7))
-                        .addGap(18, 18, 18)
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jSpinner6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jSpinner5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addGap(70, 70, 70))
-        );
-        jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jSpinner1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel2))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jSpinner2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel3))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jSpinner3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel4))
-                        .addGap(84, 84, 84))
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel5)
-                            .addComponent(jSpinner4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel6)
-                            .addComponent(jSpinner5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel7)
-                            .addComponent(jSpinner6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
-        );
-
-        jPanel5.setBorder(javax.swing.BorderFactory.createTitledBorder("Types"));
-
-        jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
-        jComboBox2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
-        jLabel8.setText("Primary");
-
-        jLabel9.setText("Secondary");
-
-        javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
-        jPanel5.setLayout(jPanel5Layout);
-        jPanel5Layout.setHorizontalGroup(
-            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel5Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jLabel9, javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel8, javax.swing.GroupLayout.Alignment.LEADING))
-                .addGap(18, 18, 18)
-                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jComboBox2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-        jPanel5Layout.setVerticalGroup(
-            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel5Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel8))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jComboBox2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel9)))
-        );
-
-        jPanel6.setBorder(javax.swing.BorderFactory.createTitledBorder("EV Yield"));
-
-        jLabel22.setText("Special Defense");
-
-        jLabel23.setText("Speed");
-
-        jLabel24.setText("HP");
-
-        jLabel25.setText("Attack");
-
-        jLabel26.setText("Defense");
-
-        jLabel27.setText("Special Attack");
-
-        javax.swing.GroupLayout jPanel6Layout = new javax.swing.GroupLayout(jPanel6);
-        jPanel6.setLayout(jPanel6Layout);
-        jPanel6Layout.setHorizontalGroup(
-            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel6Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel6Layout.createSequentialGroup()
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel25)
-                            .addComponent(jLabel24, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(66, 66, 66)
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jSpinner21, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jSpinner20, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(jPanel6Layout.createSequentialGroup()
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel27)
-                            .addComponent(jLabel26))
-                        .addGap(26, 26, 26)
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jSpinner11, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jSpinner10, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(jPanel6Layout.createSequentialGroup()
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel22)
-                            .addComponent(jLabel23))
-                        .addGap(18, 18, 18)
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jSpinner19, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jSpinner12, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addGap(70, 70, 70))
-        );
-        jPanel6Layout.setVerticalGroup(
-            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel6Layout.createSequentialGroup()
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jSpinner20, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel24))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jSpinner21, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel25))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(jPanel6Layout.createSequentialGroup()
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jSpinner10, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel26))
-                        .addGap(84, 84, 84))
-                    .addGroup(jPanel6Layout.createSequentialGroup()
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel27)
-                            .addComponent(jSpinner11, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel22)
-                            .addComponent(jSpinner12, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel23)
-                            .addComponent(jSpinner19, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
-        );
-
-        jPanel7.setBorder(javax.swing.BorderFactory.createTitledBorder("Abilities"));
-
-        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
-        jComboBox4.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
-        jComboBox5.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
-        javax.swing.GroupLayout jPanel7Layout = new javax.swing.GroupLayout(jPanel7);
-        jPanel7.setLayout(jPanel7Layout);
-        jPanel7Layout.setHorizontalGroup(
-            jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel7Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jComboBox4, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jComboBox3, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jComboBox5, javax.swing.GroupLayout.PREFERRED_SIZE, 151, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-        jPanel7Layout.setVerticalGroup(
-            jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel7Layout.createSequentialGroup()
-                .addComponent(jComboBox3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jComboBox4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jComboBox5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-
-        jPanel8.setBorder(javax.swing.BorderFactory.createTitledBorder("Pokédex Data"));
-
-        jLabel10.setText("Classifier");
-
-        jLabel11.setText("Description");
-
-        jTextField2.setText("jTextField2");
-
-        jTextArea1.setColumns(20);
-        jTextArea1.setRows(5);
-        jScrollPane1.setViewportView(jTextArea1);
-
-        jLabel28.setText("Height");
-
-        jLabel29.setText("Weight");
-
-        jLabel30.setText("ft");
-
-        jLabel31.setText("lbs");
-
-        jLabel32.setText("in");
-
-        javax.swing.GroupLayout jPanel8Layout = new javax.swing.GroupLayout(jPanel8);
-        jPanel8.setLayout(jPanel8Layout);
-        jPanel8Layout.setHorizontalGroup(
-            jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel8Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel10)
-                    .addComponent(jLabel11)
-                    .addComponent(jLabel29)
-                    .addComponent(jLabel28))
-                .addGap(37, 37, 37)
-                .addGroup(jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel8Layout.createSequentialGroup()
-                        .addGroup(jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jSpinner23, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jSpinner22, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel31)
-                            .addGroup(jPanel8Layout.createSequentialGroup()
-                                .addComponent(jLabel30)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jSpinner24, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jLabel32)))
-                        .addGap(0, 0, Short.MAX_VALUE))
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 246, Short.MAX_VALUE)
-                    .addComponent(jTextField2))
-                .addContainerGap())
-        );
-        jPanel8Layout.setVerticalGroup(
-            jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel8Layout.createSequentialGroup()
-                .addGroup(jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel10)
-                    .addComponent(jTextField2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel11)
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jSpinner22, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel28)
-                    .addComponent(jLabel30)
-                    .addGroup(jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(jSpinner24, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(jLabel32)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jSpinner23, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel29)
-                    .addComponent(jLabel31))
-                .addGap(0, 23, Short.MAX_VALUE))
-        );
-
-        jTextField1.setText("jTextField1");
-
-        jPanel4.setBorder(javax.swing.BorderFactory.createTitledBorder("Learnset"));
-
-        jList1.setModel(new javax.swing.AbstractListModel<String>() {
-            String[] strings = { "Item 1", "Item 2", "Item 3", "Item 4", "Item 5" };
-            public int getSize() { return strings.length; }
-            public String getElementAt(int i) { return strings[i]; }
+        // Types section
+        JPanel typesPanel = new JPanel(new GridLayout(2, 2, 4, 2));
+        typesPanel.setBorder(BorderFactory.createTitledBorder("Types"));
+        type1Combo = new JComboBox<>(TYPE_NAMES);
+        type2Combo = new JComboBox<>(TYPE_NAMES);
+        type1Combo.addActionListener(e -> {
+            if (!updatingUI) {
+                WBPersonalData pd = GetCurrentPersonal();
+                if (pd != null) pd.SetType1(type1Combo.getSelectedIndex());
+            }
         });
-        jScrollPane2.setViewportView(jList1);
+        type2Combo.addActionListener(e -> {
+            if (!updatingUI) {
+                WBPersonalData pd = GetCurrentPersonal();
+                if (pd != null) pd.SetType2(type2Combo.getSelectedIndex());
+            }
+        });
+        typesPanel.add(new JLabel("Primary"));
+        typesPanel.add(type1Combo);
+        typesPanel.add(new JLabel("Secondary"));
+        typesPanel.add(type2Combo);
 
-        jPanel9.setBorder(javax.swing.BorderFactory.createTitledBorder("Entry"));
+        // EV Yield section
+        JPanel evPanel = new JPanel(new GridLayout(6, 2, 4, 2));
+        evPanel.setBorder(BorderFactory.createTitledBorder("EV Yield"));
+        for (int i = 0; i < 6; i++) {
+            evPanel.add(new JLabel(STAT_NAMES[i]));
+            evYieldSpinners[i] = new JSpinner(new SpinnerNumberModel(0, 0, 3, 1));
+            final int idx = i;
+            evYieldSpinners[i].addChangeListener(e -> {
+                if (!updatingUI) {
+                    WBPersonalData pd = GetCurrentPersonal();
+                    if (pd != null) pd.SetEVYield(idx, (int) evYieldSpinners[idx].getValue());
+                }
+            });
+            evPanel.add(evYieldSpinners[i]);
+        }
 
-        jLabel18.setText("Move");
+        // Abilities section
+        JPanel abilPanel = new JPanel(new GridLayout(3, 2, 4, 2));
+        abilPanel.setBorder(BorderFactory.createTitledBorder("Abilities"));
+        ability1Combo = new JComboBox<>();
+        ability2Combo = new JComboBox<>();
+        hiddenAbilityCombо = new JComboBox<>();
+        ability1Combo.addActionListener(e -> {
+            if (!updatingUI) {
+                WBPersonalData pd = GetCurrentPersonal();
+                if (pd != null) pd.SetAbility1(ability1Combo.getSelectedIndex());
+            }
+        });
+        ability2Combo.addActionListener(e -> {
+            if (!updatingUI) {
+                WBPersonalData pd = GetCurrentPersonal();
+                if (pd != null) pd.SetAbility2(ability2Combo.getSelectedIndex());
+            }
+        });
+        hiddenAbilityCombо.addActionListener(e -> {
+            if (!updatingUI) {
+                WBPersonalData pd = GetCurrentPersonal();
+                if (pd != null) pd.SetHiddenAbility(hiddenAbilityCombо.getSelectedIndex());
+            }
+        });
+        abilPanel.add(new JLabel("Ability 1"));
+        abilPanel.add(ability1Combo);
+        abilPanel.add(new JLabel("Ability 2"));
+        abilPanel.add(ability2Combo);
+        abilPanel.add(new JLabel("Hidden"));
+        abilPanel.add(hiddenAbilityCombо);
 
-        jComboBox6.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        // Misc section
+        JPanel miscPanel = new JPanel(new GridLayout(7, 2, 4, 2));
+        miscPanel.setBorder(BorderFactory.createTitledBorder("Misc"));
 
-        jLabel19.setText("Level");
+        catchRateSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 255, 1));
+        genderRatioSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 255, 1));
+        baseHappinessSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 255, 1));
+        hatchStepsSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 255, 1));
+        baseExpSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 65535, 1));
+        heightSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 65535, 1));
+        weightSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 65535, 1));
 
-        jButton1.setText("Add");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
+        catchRateSpinner.addChangeListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetCatchRate((int) catchRateSpinner.getValue()); } });
+        genderRatioSpinner.addChangeListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetGenderRatio((int) genderRatioSpinner.getValue()); } });
+        baseHappinessSpinner.addChangeListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetBaseHappiness((int) baseHappinessSpinner.getValue()); } });
+        hatchStepsSpinner.addChangeListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetHatchSteps((int) hatchStepsSpinner.getValue()); } });
+        baseExpSpinner.addChangeListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetBaseExp((int) baseExpSpinner.getValue()); } });
+        heightSpinner.addChangeListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetHeight((int) heightSpinner.getValue()); } });
+        weightSpinner.addChangeListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetWeight((int) weightSpinner.getValue()); } });
+
+        miscPanel.add(new JLabel("Catch Rate"));
+        miscPanel.add(catchRateSpinner);
+        miscPanel.add(new JLabel("Gender Ratio"));
+        miscPanel.add(genderRatioSpinner);
+        miscPanel.add(new JLabel("Base Happiness"));
+        miscPanel.add(baseHappinessSpinner);
+        miscPanel.add(new JLabel("Hatch Steps"));
+        miscPanel.add(hatchStepsSpinner);
+        miscPanel.add(new JLabel("Base Exp"));
+        miscPanel.add(baseExpSpinner);
+        miscPanel.add(new JLabel("Height"));
+        miscPanel.add(heightSpinner);
+        miscPanel.add(new JLabel("Weight"));
+        miscPanel.add(weightSpinner);
+
+        // Egg Groups + Growth
+        JPanel eggPanel = new JPanel(new GridLayout(3, 2, 4, 2));
+        eggPanel.setBorder(BorderFactory.createTitledBorder("Egg Groups / Growth"));
+        eggGroup1Combo = new JComboBox<>(EGG_GROUP_NAMES);
+        eggGroup2Combo = new JComboBox<>(EGG_GROUP_NAMES);
+        expGrowthCombo = new JComboBox<>(EXP_GROWTH_NAMES);
+        eggGroup1Combo.addActionListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetEggGroup1(eggGroup1Combo.getSelectedIndex()); } });
+        eggGroup2Combo.addActionListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetEggGroup2(eggGroup2Combo.getSelectedIndex()); } });
+        expGrowthCombo.addActionListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetExpGrowthRate(expGrowthCombo.getSelectedIndex()); } });
+        eggPanel.add(new JLabel("Egg Group 1"));
+        eggPanel.add(eggGroup1Combo);
+        eggPanel.add(new JLabel("Egg Group 2"));
+        eggPanel.add(eggGroup2Combo);
+        eggPanel.add(new JLabel("Exp Growth"));
+        eggPanel.add(expGrowthCombo);
+
+        // Wild Items
+        JPanel wildItemPanel = new JPanel(new GridLayout(3, 2, 4, 2));
+        wildItemPanel.setBorder(BorderFactory.createTitledBorder("Wild Held Items"));
+        wildItem1Combo = new JComboBox<>();
+        wildItem2Combo = new JComboBox<>();
+        wildItem3Combo = new JComboBox<>();
+        wildItem1Combo.setMaximumRowCount(20);
+        wildItem2Combo.setMaximumRowCount(20);
+        wildItem3Combo.setMaximumRowCount(20);
+        wildItem1Combo.addActionListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetWildItem1(wildItem1Combo.getSelectedIndex()); } });
+        wildItem2Combo.addActionListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetWildItem2(wildItem2Combo.getSelectedIndex()); } });
+        wildItem3Combo.addActionListener(e -> { if (!updatingUI) { WBPersonalData pd = GetCurrentPersonal(); if (pd != null) pd.SetWildItem3(wildItem3Combo.getSelectedIndex()); } });
+        wildItemPanel.add(new JLabel("Item 1 (50%)"));
+        wildItemPanel.add(wildItem1Combo);
+        wildItemPanel.add(new JLabel("Item 2 (5%)"));
+        wildItemPanel.add(wildItem2Combo);
+        wildItemPanel.add(new JLabel("Item 3 (1%)"));
+        wildItemPanel.add(wildItem3Combo);
+
+        // Layout all sections
+        // Left column: Base Stats, Types, EV Yield
+        JPanel leftCol = new JPanel();
+        leftCol.setLayout(new BoxLayout(leftCol, BoxLayout.Y_AXIS));
+        leftCol.add(baseStatsPanel);
+        leftCol.add(typesPanel);
+        leftCol.add(evPanel);
+
+        // Middle column: Abilities, Egg Groups, Wild Items
+        JPanel midCol = new JPanel();
+        midCol.setLayout(new BoxLayout(midCol, BoxLayout.Y_AXIS));
+        midCol.add(abilPanel);
+        midCol.add(eggPanel);
+        midCol.add(wildItemPanel);
+
+        // Right column: Misc
+        JPanel rightCol = new JPanel();
+        rightCol.setLayout(new BoxLayout(rightCol, BoxLayout.Y_AXIS));
+        rightCol.add(miscPanel);
+
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 1.0; gbc.weighty = 1.0;
+        gbc.anchor = GridBagConstraints.NORTH;
+        panel.add(leftCol, gbc);
+        gbc.gridx = 1;
+        panel.add(midCol, gbc);
+        gbc.gridx = 2;
+        panel.add(rightCol, gbc);
+
+        return new JScrollPane(panel);
+    }
+
+    private JPanel CreateLearnsetPanel() {
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        panel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+
+        // Table
+        learnsetTableModel = new DefaultTableModel(new String[]{"Level", "Move"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
+        learnsetTable = new JTable(learnsetTableModel);
+        learnsetTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        learnsetTable.getColumnModel().getColumn(0).setPreferredWidth(60);
+        learnsetTable.getColumnModel().getColumn(1).setPreferredWidth(200);
+        panel.add(new JScrollPane(learnsetTable), BorderLayout.CENTER);
+
+        // Edit controls
+        JPanel editPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        editPanel.add(new JLabel("Move:"));
+        learnsetMoveCombo = new JComboBox<>();
+        learnsetMoveCombo.setMaximumRowCount(20);
+        learnsetMoveCombo.setPreferredSize(new Dimension(180, 24));
+        editPanel.add(learnsetMoveCombo);
+
+        editPanel.add(new JLabel("Level:"));
+        learnsetLevelSpinner = new JSpinner(new SpinnerNumberModel(1, 0, 100, 1));
+        editPanel.add(learnsetLevelSpinner);
+
+        JButton addBtn = new JButton("Add");
+        addBtn.addActionListener(e -> {
+            WBLearnsetData ls = GetCurrentLearnset();
+            if (ls != null && learnsetMoveCombo.getSelectedIndex() >= 0) {
+                int moveID = learnsetMoveCombo.getSelectedIndex();
+                int level = (int) learnsetLevelSpinner.getValue();
+                ls.AddEntry(moveID, level);
+                UI_LoadLearnset();
+            }
+        });
+        editPanel.add(addBtn);
+
+        JButton removeBtn = new JButton("Remove");
+        removeBtn.addActionListener(e -> {
+            WBLearnsetData ls = GetCurrentLearnset();
+            int sel = learnsetTable.getSelectedRow();
+            if (ls != null && sel >= 0) {
+                ls.RemoveEntry(sel);
+                UI_LoadLearnset();
+            }
+        });
+        editPanel.add(removeBtn);
+
+        JButton updateBtn = new JButton("Update");
+        updateBtn.addActionListener(e -> {
+            WBLearnsetData ls = GetCurrentLearnset();
+            int sel = learnsetTable.getSelectedRow();
+            if (ls != null && sel >= 0 && learnsetMoveCombo.getSelectedIndex() >= 0) {
+                int moveID = learnsetMoveCombo.getSelectedIndex();
+                int level = (int) learnsetLevelSpinner.getValue();
+                ls.SetEntry(sel, moveID, level);
+                UI_LoadLearnset();
+            }
+        });
+        editPanel.add(updateBtn);
+
+        panel.add(editPanel, BorderLayout.SOUTH);
+
+        // Selection listener to populate edit controls
+        learnsetTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                WBLearnsetData ls = GetCurrentLearnset();
+                int sel = learnsetTable.getSelectedRow();
+                if (ls != null && sel >= 0 && sel < ls.GetEntryCount()) {
+                    WBLearnsetEntry entry = ls.GetEntry(sel);
+                    updatingUI = true;
+                    learnsetMoveCombo.setSelectedIndex(Math.min(entry.GetMoveID(), learnsetMoveCombo.getItemCount() - 1));
+                    learnsetLevelSpinner.setValue(entry.GetLevel());
+                    updatingUI = false;
+                }
             }
         });
 
-        jButton2.setText("Remove");
-        jButton2.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton2ActionPerformed(evt);
+        return panel;
+    }
+
+    private JPanel CreateEvolutionPanel() {
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        panel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+
+        JPanel gridPanel = new JPanel(new GridLayout(WBEvolutionData.MAX_SLOTS, 1, 0, 2));
+        gridPanel.setBorder(BorderFactory.createTitledBorder("Evolution Slots"));
+
+        for (int i = 0; i < WBEvolutionData.MAX_SLOTS; i++) {
+            JPanel slotPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 1));
+            slotPanel.add(new JLabel("Slot " + (i + 1) + ":"));
+
+            slotPanel.add(new JLabel("Method"));
+            evoMethodSpinners[i] = new JSpinner(new SpinnerNumberModel(0, 0, 255, 1));
+            final int idx = i;
+            evoMethodSpinners[i].addChangeListener(e -> {
+                if (!updatingUI) {
+                    WBEvolutionData evo = GetCurrentEvolution();
+                    if (evo != null) {
+                        WBEvolutionEntry entry = evo.GetEntry(idx);
+                        if (entry != null) entry.SetMethod((int) evoMethodSpinners[idx].getValue());
+                    }
+                }
+            });
+            slotPanel.add(evoMethodSpinners[i]);
+
+            slotPanel.add(new JLabel("Param"));
+            evoParamSpinners[i] = new JSpinner(new SpinnerNumberModel(0, 0, 65535, 1));
+            evoParamSpinners[i].addChangeListener(e -> {
+                if (!updatingUI) {
+                    WBEvolutionData evo = GetCurrentEvolution();
+                    if (evo != null) {
+                        WBEvolutionEntry entry = evo.GetEntry(idx);
+                        if (entry != null) entry.SetParameter((int) evoParamSpinners[idx].getValue());
+                    }
+                }
+            });
+            slotPanel.add(evoParamSpinners[i]);
+
+            slotPanel.add(new JLabel("Target"));
+            evoTargetCombos[i] = new JComboBox<>();
+            evoTargetCombos[i].setMaximumRowCount(20);
+            evoTargetCombos[i].setPreferredSize(new Dimension(160, 24));
+            evoTargetCombos[i].addActionListener(e -> {
+                if (!updatingUI) {
+                    WBEvolutionData evo = GetCurrentEvolution();
+                    if (evo != null) {
+                        WBEvolutionEntry entry = evo.GetEntry(idx);
+                        if (entry != null && evoTargetCombos[idx].getSelectedIndex() >= 0) {
+                            entry.SetTargetSpecies(evoTargetCombos[idx].getSelectedIndex());
+                        }
+                    }
+                }
+            });
+            slotPanel.add(evoTargetCombos[i]);
+
+            gridPanel.add(slotPanel);
+        }
+
+        panel.add(new JScrollPane(gridPanel), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel CreateTMPanel() {
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        panel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+
+        // 128 TM/HM checkboxes in a scrollable grid
+        int totalTMs = WBPersonalData.TM_FLAG_BYTES * 8;
+        JPanel gridPanel = new JPanel(new GridLayout(0, 8, 2, 2));
+        tmCheckboxes = new JCheckBox[totalTMs];
+
+        for (int i = 0; i < totalTMs; i++) {
+            String label;
+            if (i < 95) {
+                label = "TM" + String.format("%02d", i + 1);
+            } else if (i < 101) {
+                label = "HM" + String.format("%02d", i - 94);
+            } else {
+                label = "TM" + String.format("%03d", i + 1);
             }
-        });
+            tmCheckboxes[i] = new JCheckBox(label);
+            final int idx = i;
+            tmCheckboxes[i].addActionListener(e -> {
+                if (!updatingUI) {
+                    WBPersonalData pd = GetCurrentPersonal();
+                    if (pd != null) pd.SetTMFlag(idx, tmCheckboxes[idx].isSelected());
+                }
+            });
+            gridPanel.add(tmCheckboxes[i]);
+        }
 
-        javax.swing.GroupLayout jPanel9Layout = new javax.swing.GroupLayout(jPanel9);
-        jPanel9.setLayout(jPanel9Layout);
-        jPanel9Layout.setHorizontalGroup(
-            jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel9Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel9Layout.createSequentialGroup()
-                        .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel18)
-                            .addComponent(jLabel19))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 52, Short.MAX_VALUE)
-                        .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(jComboBox6, 0, 123, Short.MAX_VALUE)
-                            .addComponent(jSpinner7)))
-                    .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jButton2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap())
-        );
-        jPanel9Layout.setVerticalGroup(
-            jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel9Layout.createSequentialGroup()
-                .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel18)
-                    .addComponent(jComboBox6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel19)
-                    .addComponent(jSpinner7, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jButton1)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jButton2)
-                .addGap(0, 0, Short.MAX_VALUE))
-        );
+        panel.add(new JScrollPane(gridPanel), BorderLayout.CENTER);
+        return panel;
+    }
 
-        javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
-        jPanel4.setLayout(jPanel4Layout);
-        jPanel4Layout.setHorizontalGroup(
-            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel4Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 233, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jPanel9, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-        jPanel4Layout.setVerticalGroup(
-            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel4Layout.createSequentialGroup()
-                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                    .addComponent(jPanel9, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jScrollPane2, javax.swing.GroupLayout.Alignment.LEADING))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
+    // ======================== DATA ACCESS ========================
 
-        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
-        jPanel3.setLayout(jPanel3Layout);
-        jPanel3Layout.setHorizontalGroup(
-            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel3Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, 138, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(jPanel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jPanel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, 188, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jPanel6, javax.swing.GroupLayout.PREFERRED_SIZE, 182, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addComponent(jPanel8, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(16, Short.MAX_VALUE))
-        );
-        jPanel3Layout.setVerticalGroup(
-            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel3Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jPanel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jPanel7, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 132, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel8, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(432, Short.MAX_VALUE))
-        );
+    NTRGameFS FS() {
+        return Instance.getMissionControl(VLaunchpad.class).fs;
+    }
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addContainerGap())
-        );
-    }// </editor-fold>//GEN-END:initComponents
+    TextFile LoadSystemTextArchive(int index) {
+        return new TextFile(FS().NARCGet(NARCRef.MSGDATA_SYSTEM, index), GenVMessageHandler.INSTANCE);
+    }
 
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton1ActionPerformed
+    private WBPersonalData GetCurrentPersonal() {
+        return currentPokemonIndex >= 0 && currentPokemonIndex < PersonalData.size()
+            ? PersonalData.get(currentPokemonIndex) : null;
+    }
 
-    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton2ActionPerformed
+    private WBLearnsetData GetCurrentLearnset() {
+        return currentPokemonIndex >= 0 && currentPokemonIndex < Learnsets.size()
+            ? Learnsets.get(currentPokemonIndex) : null;
+    }
+
+    private WBEvolutionData GetCurrentEvolution() {
+        return currentPokemonIndex >= 0 && currentPokemonIndex < Evolutions.size()
+            ? Evolutions.get(currentPokemonIndex) : null;
+    }
+
+    // ======================== DATA LOADING ========================
+
+    private void LoadAllData() throws IOException {
+        PersonalData.clear();
+        Learnsets.clear();
+        Evolutions.clear();
+
+        int personalMax = FS().NARCGetDataMax(NARCRef.PML_PERSONAL);
+        for (int i = 0; i < personalMax; i++) {
+            FSFile f = FS().NARCGet(NARCRef.PML_PERSONAL, i);
+            PersonalData.add(new WBPersonalData(f.getDataIOStream()));
+        }
+
+        int learnsetMax = FS().NARCGetDataMax(NARCRef.PML_LEARNSETS);
+        for (int i = 0; i < learnsetMax; i++) {
+            FSFile f = FS().NARCGet(NARCRef.PML_LEARNSETS, i);
+            Learnsets.add(new WBLearnsetData(f.getDataIOStream()));
+        }
+
+        int evoMax = FS().NARCGetDataMax(NARCRef.PML_EVOLUTION);
+        for (int i = 0; i < evoMax; i++) {
+            FSFile f = FS().NARCGet(NARCRef.PML_EVOLUTION, i);
+            Evolutions.add(new WBEvolutionData(f.getDataIOStream()));
+        }
+    }
+
+    private void LoadTextArchives() {
+        PkmnNames = LoadSystemTextArchive(90);
+        ItemNames = LoadSystemTextArchive(64);
+        MoveNames = LoadSystemTextArchive(403);
+        AbilNames = LoadSystemTextArchive(374);
+    }
+
+    // ======================== UI UPDATE ========================
+
+    private void UI_LoadPokemon() {
+        WBPersonalData pd = GetCurrentPersonal();
+        if (pd == null) return;
+
+        updatingUI = true;
+
+        // Base stats
+        for (int i = 0; i < 6; i++) {
+            baseStatSpinners[i].setValue(pd.GetBaseStat(i));
+        }
+
+        // Types
+        if (pd.GetType1() < TYPE_NAMES.length) type1Combo.setSelectedIndex(pd.GetType1());
+        if (pd.GetType2() < TYPE_NAMES.length) type2Combo.setSelectedIndex(pd.GetType2());
+
+        // EV yields
+        for (int i = 0; i < 6; i++) {
+            evYieldSpinners[i].setValue(pd.GetEVYield(i));
+        }
+
+        // Abilities
+        if (pd.GetAbility1() < ability1Combo.getItemCount()) ability1Combo.setSelectedIndex(pd.GetAbility1());
+        if (pd.GetAbility2() < ability2Combo.getItemCount()) ability2Combo.setSelectedIndex(pd.GetAbility2());
+        if (pd.GetHiddenAbility() < hiddenAbilityCombо.getItemCount()) hiddenAbilityCombо.setSelectedIndex(pd.GetHiddenAbility());
+
+        // Misc
+        catchRateSpinner.setValue(pd.GetCatchRate());
+        genderRatioSpinner.setValue(pd.GetGenderRatio());
+        baseHappinessSpinner.setValue(pd.GetBaseHappiness());
+        hatchStepsSpinner.setValue(pd.GetHatchSteps());
+        baseExpSpinner.setValue(pd.GetBaseExp());
+        heightSpinner.setValue(pd.GetHeight());
+        weightSpinner.setValue(pd.GetWeight());
+
+        // Egg groups / growth
+        if (pd.GetEggGroup1() < EGG_GROUP_NAMES.length) eggGroup1Combo.setSelectedIndex(pd.GetEggGroup1());
+        if (pd.GetEggGroup2() < EGG_GROUP_NAMES.length) eggGroup2Combo.setSelectedIndex(pd.GetEggGroup2());
+        if (pd.GetExpGrowthRate() < EXP_GROWTH_NAMES.length) expGrowthCombo.setSelectedIndex(pd.GetExpGrowthRate());
+
+        // Wild items
+        if (pd.GetWildItem1() < wildItem1Combo.getItemCount()) wildItem1Combo.setSelectedIndex(pd.GetWildItem1());
+        if (pd.GetWildItem2() < wildItem2Combo.getItemCount()) wildItem2Combo.setSelectedIndex(pd.GetWildItem2());
+        if (pd.GetWildItem3() < wildItem3Combo.getItemCount()) wildItem3Combo.setSelectedIndex(pd.GetWildItem3());
+
+        // TM flags
+        for (int i = 0; i < tmCheckboxes.length; i++) {
+            tmCheckboxes[i].setSelected(pd.GetTMFlag(i));
+        }
+
+        updatingUI = false;
+
+        // Learnset + Evolution (separate methods since they use different data lists)
+        UI_LoadLearnset();
+        UI_LoadEvolution();
+    }
+
+    private void UI_LoadLearnset() {
+        learnsetTableModel.setRowCount(0);
+        WBLearnsetData ls = GetCurrentLearnset();
+        if (ls == null) return;
+
+        for (int i = 0; i < ls.GetEntryCount(); i++) {
+            WBLearnsetEntry entry = ls.GetEntry(i);
+            String moveName = entry.GetMoveID() < MoveNames.getLineCount()
+                ? MoveNames.getLine(entry.GetMoveID()) : "Move " + entry.GetMoveID();
+            learnsetTableModel.addRow(new Object[]{entry.GetLevel(), moveName});
+        }
+    }
+
+    private void UI_LoadEvolution() {
+        WBEvolutionData evo = GetCurrentEvolution();
+        updatingUI = true;
+        for (int i = 0; i < WBEvolutionData.MAX_SLOTS; i++) {
+            if (evo != null && i < evo.GetSlotCount()) {
+                WBEvolutionEntry entry = evo.GetEntry(i);
+                evoMethodSpinners[i].setValue(entry.GetMethod());
+                evoParamSpinners[i].setValue(entry.GetParameter());
+                if (entry.GetTargetSpecies() < evoTargetCombos[i].getItemCount()) {
+                    evoTargetCombos[i].setSelectedIndex(entry.GetTargetSpecies());
+                }
+            } else {
+                evoMethodSpinners[i].setValue(0);
+                evoParamSpinners[i].setValue(0);
+                evoTargetCombos[i].setSelectedIndex(0);
+            }
+        }
+        updatingUI = false;
+    }
+
+    // ======================== SAVING ========================
+
+    private void SaveCurrentPokemon() {
+        if (currentPokemonIndex < 0) return;
+
+        try {
+            // Save personal data
+            if (currentPokemonIndex < PersonalData.size()) {
+                FSFile f = FS().NARCGet(NARCRef.PML_PERSONAL, currentPokemonIndex);
+                DataIOStream out = f.getDataIOStream();
+                PersonalData.get(currentPokemonIndex).Serialize(out);
+                out.close();
+            }
+
+            // Save learnset
+            if (currentPokemonIndex < Learnsets.size()) {
+                FSFile f = FS().NARCGet(NARCRef.PML_LEARNSETS, currentPokemonIndex);
+                DataIOStream out = f.getDataIOStream();
+                Learnsets.get(currentPokemonIndex).Serialize(out);
+                out.close();
+            }
+
+            // Save evolution
+            if (currentPokemonIndex < Evolutions.size()) {
+                FSFile f = FS().NARCGet(NARCRef.PML_EVOLUTION, currentPokemonIndex);
+                DataIOStream out = f.getDataIOStream();
+                Evolutions.get(currentPokemonIndex).Serialize(out);
+                out.close();
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(VPokemonEditor.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    // ======================== INTERFACE ========================
+
+    @Override
+    public void onProjectLoaded(CTRMapProject proj) {
+        try {
+            LoadTextArchives();
+            LoadAllData();
+        } catch (IOException ex) {
+            Logger.getLogger(VPokemonEditor.class.getName()).log(Level.SEVERE, null, ex);
+            return;
+        }
+
+        updatingUI = true;
+
+        // Populate pokemon selector
+        pokemonSelector.removeAllItems();
+        int maxItems = Math.min(PkmnNames.getLineCount(), PersonalData.size());
+        for (int i = 0; i < maxItems; i++) {
+            pokemonSelector.addItem(String.format("%03d - %s", i, PkmnNames.getLine(i)));
+        }
+
+        // Populate ability combos
+        String[] abilArr = AbilNames.getFriendlyLinesArray();
+        ability1Combo.setModel(new DefaultComboBoxModel<>(abilArr));
+        ability2Combo.setModel(new DefaultComboBoxModel<>(abilArr));
+        hiddenAbilityCombо.setModel(new DefaultComboBoxModel<>(abilArr));
+
+        // Populate item combos
+        String[] itemArr = ItemNames.getFriendlyLinesArray();
+        wildItem1Combo.setModel(new DefaultComboBoxModel<>(itemArr));
+        wildItem2Combo.setModel(new DefaultComboBoxModel<>(itemArr));
+        wildItem3Combo.setModel(new DefaultComboBoxModel<>(itemArr));
+
+        // Populate move combo for learnset editor
+        learnsetMoveCombo.setModel(new DefaultComboBoxModel<>(MoveNames.getFriendlyLinesArray()));
+
+        // Populate evolution target combos
+        String[] pkmnArr = new String[maxItems];
+        for (int i = 0; i < maxItems; i++) {
+            pkmnArr[i] = String.format("%03d - %s", i, PkmnNames.getLine(i));
+        }
+        for (int i = 0; i < WBEvolutionData.MAX_SLOTS; i++) {
+            evoTargetCombos[i].setModel(new DefaultComboBoxModel<>(pkmnArr));
+        }
+
+        updatingUI = false;
+
+        // Load first pokemon
+        if (!PersonalData.isEmpty()) {
+            currentPokemonIndex = 0;
+            pokemonSelector.setSelectedIndex(0);
+            UI_LoadPokemon();
+        }
+    }
 
     @Override
     public String getTabName() {
-        return "Pokémon Editor";
+        return "Pokemon Editor";
     }
 
     @Override
     public boolean isGameSupported(GameInfo game) {
         return game.isGenV();
     }
-
-    @Override
-    public boolean isDebugOnly() {
-        return AbstractTabbedEditor.super.isDebugOnly(); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
-    }
-
-    @Override
-    public boolean isSharedInstance() {
-        return AbstractTabbedEditor.super.isSharedInstance(); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
-    }
-
-    @Override
-    public List<GameInfoListener> getGameInfoListeners() {
-        return AbstractTabbedEditor.super.getGameInfoListeners(); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
-    }
-
-    @Override
-    public Collection<? extends IMCDebugger> getExtraDebuggers() {
-        return AbstractTabbedEditor.super.getExtraDebuggers(); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
-    }
-
-    @Override
-    public void prepareForSave() {
-        AbstractTabbedEditor.super.prepareForSave(); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
-    }
-
-    @Override
-    public boolean store(boolean dialog) {
-        return AbstractTabbedEditor.super.store(dialog); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
-    }
-
-    @Override
-    public void handleGlobalEvent(String eventId, Object... params) {
-        AbstractTabbedEditor.super.handleGlobalEvent(eventId, params); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
-    }
-
-    @Override
-    public void onProjectLoaded(CTRMapProject proj) {
-        AbstractTabbedEditor.super.onProjectLoaded(proj); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
-    }
-
-    @Override
-    public void onProjectUnloaded(CTRMapProject proj) {
-        AbstractTabbedEditor.super.onProjectUnloaded(proj); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
-    }
-
-
-    // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
-    private javax.swing.JComboBox<String> jComboBox1;
-    private javax.swing.JComboBox<String> jComboBox2;
-    private javax.swing.JComboBox<String> jComboBox3;
-    private javax.swing.JComboBox<String> jComboBox4;
-    private javax.swing.JComboBox<String> jComboBox5;
-    private javax.swing.JComboBox<String> jComboBox6;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel10;
-    private javax.swing.JLabel jLabel11;
-    private javax.swing.JLabel jLabel18;
-    private javax.swing.JLabel jLabel19;
-    private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel22;
-    private javax.swing.JLabel jLabel23;
-    private javax.swing.JLabel jLabel24;
-    private javax.swing.JLabel jLabel25;
-    private javax.swing.JLabel jLabel26;
-    private javax.swing.JLabel jLabel27;
-    private javax.swing.JLabel jLabel28;
-    private javax.swing.JLabel jLabel29;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel30;
-    private javax.swing.JLabel jLabel31;
-    private javax.swing.JLabel jLabel32;
-    private javax.swing.JLabel jLabel4;
-    private javax.swing.JLabel jLabel5;
-    private javax.swing.JLabel jLabel6;
-    private javax.swing.JLabel jLabel7;
-    private javax.swing.JLabel jLabel8;
-    private javax.swing.JLabel jLabel9;
-    private javax.swing.JList<String> jList1;
-    private javax.swing.JPanel jPanel2;
-    private javax.swing.JPanel jPanel3;
-    private javax.swing.JPanel jPanel4;
-    private javax.swing.JPanel jPanel5;
-    private javax.swing.JPanel jPanel6;
-    private javax.swing.JPanel jPanel7;
-    private javax.swing.JPanel jPanel8;
-    private javax.swing.JPanel jPanel9;
-    private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JSpinner jSpinner1;
-    private javax.swing.JSpinner jSpinner10;
-    private javax.swing.JSpinner jSpinner11;
-    private javax.swing.JSpinner jSpinner12;
-    private javax.swing.JSpinner jSpinner19;
-    private javax.swing.JSpinner jSpinner2;
-    private javax.swing.JSpinner jSpinner20;
-    private javax.swing.JSpinner jSpinner21;
-    private javax.swing.JSpinner jSpinner22;
-    private javax.swing.JSpinner jSpinner23;
-    private javax.swing.JSpinner jSpinner24;
-    private javax.swing.JSpinner jSpinner3;
-    private javax.swing.JSpinner jSpinner4;
-    private javax.swing.JSpinner jSpinner5;
-    private javax.swing.JSpinner jSpinner6;
-    private javax.swing.JSpinner jSpinner7;
-    private javax.swing.JTextArea jTextArea1;
-    private javax.swing.JTextField jTextField1;
-    private javax.swing.JTextField jTextField2;
-    // End of variables declaration//GEN-END:variables
 }

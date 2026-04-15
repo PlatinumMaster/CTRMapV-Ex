@@ -6,6 +6,7 @@ package ctrmap.formats.pokemon.gen5.battle.encounters;
 
 import java.io.DataInput;
 import java.io.IOException;
+import xstandard.io.base.impl.ext.data.DataIOStream;
 
 public class WBEncEntry {
     short DexNum, FormNum;
@@ -48,10 +49,17 @@ public class WBEncEntry {
     }
     
     public short GetMaxLevel() {
-        return this.MinLevel;
+        return this.MaxLevel;
     }
-    
-    public void SetMaxLevel(byte MinLevel) {
+
+    public void SetMaxLevel(byte MaxLevel) {
         this.MaxLevel = MaxLevel;
+    }
+
+    public void Serialize(DataIOStream out) throws IOException {
+        short IDForm = (short) ((DexNum & 0x7FF) | (FormNum << 0xB));
+        out.writeShort(IDForm);
+        out.writeByte(MinLevel);
+        out.writeByte(MaxLevel);
     }
 }

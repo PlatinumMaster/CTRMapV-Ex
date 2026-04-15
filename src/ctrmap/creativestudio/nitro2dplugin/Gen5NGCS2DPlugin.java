@@ -146,16 +146,6 @@ public class Gen5NGCS2DPlugin implements INGCS2DPlugin {
 			// otherwise bitmap + 1D sprites fragment into wrong pieces
 			// (Pokemon B/W battle sprites, e.g. Cyndaquil Cell_0).
 			ts.rasterLayout = ncgr.characterBlock.bitmap;
-			// DEBUG: print NCGR metadata so we can verify tile dimensions
-			System.out.println("[NGCS2D-DBG] NCGR " + fsf.getName()
-				+ " fmt=" + ts.format
-				+ " tileW=" + ts.tileWidth + " tileH=" + ts.tileHeight
-				+ " tileCount=" + ts.getTileCount()
-				+ " flags=" + ncgr.characterBlock.flags
-				+ " bitmap=" + ncgr.characterBlock.bitmap
-				+ " mappingType0=0x" + Integer.toHexString(ncgr.characterBlock.mappingType0)
-				+ " mappingType1=0x" + Integer.toHexString(ncgr.characterBlock.mappingType1)
-				+ " linear=" + ts.isLinearMapped);
 			res.tileSheets.add(ts);
 			return res;
 		}
@@ -195,10 +185,7 @@ public class Gen5NGCS2DPlugin implements INGCS2DPlugin {
 			int mode = ncer.cellBank.mappingMode;
 			boolean is2D = (mode == NCERCellBank.MAPPING_MODE_2D);
 			int modeShift = (mode >= 0 && mode <= 3) ? mode : 0;
-			System.out.println("[NGCS2D-DBG] NCER " + fsf.getName()
-				+ " mappingMode=" + mode + " is2D=" + is2D
-				+ " cellCount=" + ncer.getCellCount()
-				+ " vramTransferOffset=0x" + Integer.toHexString(ncer.cellBank.vramTransferOffset));
+			// mappingMode and cell count preserved for later merge
 			for (int i = 0; i < ncer.getCellCount(); i++) {
 				NCERCell ncerCell = ncer.getCell(i);
 				Sprite2DCell cell = new Sprite2DCell("Cell_" + i);
@@ -234,19 +221,6 @@ public class Gen5NGCS2DPlugin implements INGCS2DPlugin {
 					oam.flipV = ncerOam.flipV;
 					oam.priority = ncerOam.priority;
 					cell.addOAM(oam);
-				}
-				if (i == 0) {
-					System.out.println("[NGCS2D-DBG] Cell_0 OAMs:");
-					for (int k = 0; k < cell.oams.size(); k++) {
-						Sprite2DOAM o = cell.oams.get(k);
-						NCERCellOAM raw = ncerCell.oams.get(k);
-						System.out.println("[NGCS2D-DBG]   OAM[" + k + "] x=" + o.x + " y=" + o.y
-							+ " w=" + o.width + " h=" + o.height
-							+ " tileIdx=" + o.tileIndex + " (raw=" + raw.tileIndex + ")"
-							+ " pal=" + o.paletteIndex
-							+ " c256=" + raw.colorMode256
-							+ " shape=" + raw.shape + " size=" + raw.size);
-					}
 				}
 				res.cells.add(cell);
 			}

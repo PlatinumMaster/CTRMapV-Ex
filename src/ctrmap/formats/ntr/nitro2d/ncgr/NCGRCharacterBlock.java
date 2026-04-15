@@ -97,23 +97,46 @@ public class NCGRCharacterBlock {
 		byte[] rawData = new byte[lengthDataImage];
 		io.read(rawData);
 
-		// Guess dimensions when the file stores sentinel values. This
-		// mirrors NitroPaint's ChrReadNcgr, which recomputes tilesX/tilesY
-		// whenever the mapping is 1D OR the file-declared tile count
-		// doesn't agree with the present tile data. Pokemon B/W sprite
-		// NCGRs consistently store tileWidth=tileHeight=0xFFFF (-1) and
-		// rely on this guess. Without it, downstream renderers see a
-		// negative width and either fall back to defaults or (in bitmap
-		// mode) skip the raster→tile conversion entirely.
+		// Determine tile dimensions. The approach depends on the storage
+		// layout (bitmap vs tiled) because for bitmap-mode NCGRs the
+		// declared width IS the raster row stride and must be preserved
+		// exactly — overriding it with guessWidth(n) would scramble the
+		// raster→tile conversion.
 		int bytesPerTile = format == 3 ? 32 : 64;
 		int nPresentTiles = bytesPerTile > 0 ? (lengthDataImage / bytesPerTile) : 0;
-		int declaredTileCount = (tileWidth > 0 && tileHeight > 0) ? (tileWidth * tileHeight) : -1;
-		boolean isLinear = ((mappingType1 << 16) | mappingType0) != 0;
-		if (isLinear || declaredTileCount != nPresentTiles) {
-			int guessedW = guessWidth(nPresentTiles);
-			tileWidth = guessedW;
-			tileHeight = guessedW > 0 ? (nPresentTiles / guessedW) : 0;
+		int rawW = tileWidth;
+		int rawH = tileHeight;
+
+		if (bitmap) {
+			// Bitmap-mode: the file's declared dimensions define the
+			// linear raster layout. Only fall back to guessing when
+			// the file stores sentinel (-1) or zero dimensions.
+			if (tileWidth <= 0 || tileHeight <= 0) {
+				// Unusual — bitmap with sentinel dims. Derive from
+				// tile count using the smallest width that fits.
+				if (nPresentTiles > 0) {
+					tileWidth = guessWidth(nPresentTiles);
+					tileHeight = nPresentTiles / tileWidth;
+				} else {
+					tileWidth = 1;
+					tileHeight = 0;
+				}
+				// Unusual — guessed dimensions for bitmap with sentinel values
+			}
+			// Otherwise keep the file's declared dimensions verbatim.
+		} else {
+			// Tiled-mode: override dimensions when the mapping is 1D
+			// (lineal) or the declared tile count doesn't match the
+			// data. Pokemon B/W sprite NCGRs store -1,-1 and rely on
+			// this guess.
+			int declaredTileCount = (tileWidth > 0 && tileHeight > 0) ? (tileWidth * tileHeight) : -1;
+			boolean isLinear = ((mappingType1 << 16) | mappingType0) != 0;
+			if (isLinear || declaredTileCount != nPresentTiles) {
+				tileWidth = guessWidth(nPresentTiles);
+				tileHeight = tileWidth > 0 ? (nPresentTiles / tileWidth) : 0;
+			}
 		}
+		// rawW/rawH preserved for reference; final dims used for rendering
 
 		// In bitmap mode the source bytes are a linear raster sized
 		// (tileWidth*8) x (tileHeight*8) pixels. Convert to tile-major

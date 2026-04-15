@@ -166,25 +166,14 @@ public class NCERCellBank {
 			io.seek(vramBlockStart);
 			int maxTransfer = io.readInt();        // engine's max bytes-per-transfer limit
 			int dataOffsetRel = io.readInt();      // delta from vramBlockStart to per-cell data
-			System.out.println("[NGCS2D-DBG] NCER VRAM transfer block at 0x" + Integer.toHexString(vramBlockStart)
-				+ " maxTransfer=" + maxTransfer + " dataOffsetRel=0x" + Integer.toHexString(dataOffsetRel));
 			io.seek(vramBlockStart + dataOffsetRel);
 			for (int i = 0; i < cellCount; i++) {
 				NCERCell cell = cells.get(i);
 				cell.vramTransferSrcAddr = io.readInt();
 				cell.vramTransferSize = io.readInt();
 				cell.hasVramTransfer = true;
-				if (i < 4) {
-					System.out.println("[NGCS2D-DBG]   cell[" + i + "] srcAddr=0x"
-						+ Integer.toHexString(cell.vramTransferSrcAddr)
-						+ " size=0x" + Integer.toHexString(cell.vramTransferSize)
-						+ " (" + cell.vramTransferSize + " bytes)");
-				}
 			}
 			io.seek(saved);
-		} else {
-			System.out.println("[NGCS2D-DBG] NCER has no VRAM transfer block (offset=0x"
-				+ Integer.toHexString(vramTransferOffset) + ")");
 		}
 
 		io.seek(blockStart + blockSize);

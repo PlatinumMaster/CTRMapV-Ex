@@ -18,6 +18,8 @@ import ctrmap.editor.gui.editors.gen5.level.entities.VWarpEditor;
 import ctrmap.editor.gui.editors.gen5.level.extra.VExtrasPanel;
 import ctrmap.editor.gui.editors.gen5.level.maps.VMapContainerEditor;
 import ctrmap.editor.gui.editors.gen5.level.maps.VZoneMatrixEditor;
+import ctrmap.editor.gui.editors.gen5.battle.moves.VMoveEditor;
+import ctrmap.editor.gui.editors.gen5.pokemon.VPokemonEditor;
 import ctrmap.editor.gui.editors.gen5.level.rail.VRailEditor;
 import ctrmap.editor.gui.editors.gen5.scripting.VScriptEditor;
 import ctrmap.editor.gui.editors.gen5.sequence.VSequenceEditor;
@@ -79,12 +81,13 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 		);
 		j.rmoRegistTabbedEditors(VLevelEditor.class,
 			VZoneEditor.class,
-                        VScriptEditor.class,
+			VScriptEditor.class,
 			VEventEditor.class,
-                        VTrainerEditor.class,
-                        VWildEditor.class,
-                        VMapContainerEditor.class,
-                        VZoneMatrixEditor.class,
+			VTrainerEditor.class,
+			VWildEditor.class,
+			VZoneMatrixEditor.class,
+			VPokemonEditor.class,
+			VMoveEditor.class,
 			VExtrasPanel.class
 		);
 

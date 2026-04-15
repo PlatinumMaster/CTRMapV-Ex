@@ -3,6 +3,8 @@ package ctrmap.formats.pokemon.gen5.battle.encounters;
 import java.io.DataInput;
 import java.io.IOException;
 import java.util.ArrayList;
+import xstandard.fs.FSFile;
+import xstandard.io.base.impl.ext.data.DataIOStream;
 
 public class WBEnc {
     public static enum WBEncType {
@@ -97,6 +99,22 @@ public class WBEnc {
         }
     }
     
+    public void Serialize(DataIOStream out) throws IOException {
+        for (int Index = 0; Index < 0x5; ++Index) {
+            out.writeByte(UserDataProps[Index]);
+        }
+        out.writeByte(FishEncProb);
+        out.writeByte(FishEncProb2);
+        out.writeByte(Flags);
+        for (WBEncEntry e : GrassEnc) e.Serialize(out);
+        for (WBEncEntry e : GrassDoubleEnc) e.Serialize(out);
+        for (WBEncEntry e : GrassRareEnc) e.Serialize(out);
+        for (WBEncEntry e : SurfEnc) e.Serialize(out);
+        for (WBEncEntry e : SurfRareEnc) e.Serialize(out);
+        for (WBEncEntry e : FishEnc) e.Serialize(out);
+        for (WBEncEntry e : FishRareEnc) e.Serialize(out);
+    }
+
     public WBEncEntry GetFishEncounter(WBEncType Type, int Slot) {
         switch (Type) {
             case FISH:
