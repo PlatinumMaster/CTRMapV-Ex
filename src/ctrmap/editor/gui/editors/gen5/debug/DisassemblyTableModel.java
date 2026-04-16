@@ -6,7 +6,8 @@ import javax.swing.table.AbstractTableModel;
 
 /**
  * Table model for the disassembly view.
- * Shows Address, Hex Bytes, and Instruction columns.
+ * Shows Address, Bytes, and Instruction columns.
+ * Supports both instruction rows and label/symbol rows.
  * Tracks which row corresponds to the current Program Counter.
  */
 public class DisassemblyTableModel extends AbstractTableModel {
@@ -18,16 +19,29 @@ public class DisassemblyTableModel extends AbstractTableModel {
 
 	/**
 	 * A single row in the disassembly view.
+	 * Can be either an instruction or a symbol label.
 	 */
 	public static class DisasmRow {
 		public final int address;
 		public final String hexBytes;
 		public final String mnemonic;
+		public final boolean isLabel;
 
-		public DisasmRow(int address, String hexBytes, String mnemonic) {
+		private DisasmRow(int address, String hexBytes, String mnemonic, boolean isLabel) {
 			this.address = address;
 			this.hexBytes = hexBytes;
 			this.mnemonic = mnemonic;
+			this.isLabel = isLabel;
+		}
+
+		/** Create an instruction row. */
+		public static DisasmRow instruction(int address, String hexBytes, String mnemonic) {
+			return new DisasmRow(address, hexBytes, mnemonic, false);
+		}
+
+		/** Create a symbol label row. */
+		public static DisasmRow label(int address, String name) {
+			return new DisasmRow(address, "", name + ":", true);
 		}
 	}
 
@@ -54,11 +68,11 @@ public class DisassemblyTableModel extends AbstractTableModel {
 		DisasmRow r = rows.get(row);
 		switch (column) {
 			case 0:
-				return String.format("0x%08X", r.address);
+				return r.isLabel ? "" : String.format("0x%08X", r.address);
 			case 1:
 				return r.hexBytes;
 			case 2:
-				return r.mnemonic;
+				return r.isLabel ? r.mnemonic : "  " + r.mnemonic;
 			default:
 				return "";
 		}
@@ -67,6 +81,13 @@ public class DisassemblyTableModel extends AbstractTableModel {
 	@Override
 	public boolean isCellEditable(int row, int column) {
 		return false;
+	}
+
+	/**
+	 * Check if a row is a label (symbol) row rather than an instruction.
+	 */
+	public boolean isLabelRow(int row) {
+		return row >= 0 && row < rows.size() && rows.get(row).isLabel;
 	}
 
 	/**

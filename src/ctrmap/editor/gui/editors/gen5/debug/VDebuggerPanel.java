@@ -7,14 +7,21 @@ import ctrmap.formats.common.GameInfo;
 import ctrmap.util.debug.gdb.GDBClient;
 import ctrmap.util.debug.gdb.GDBEventListener;
 import ctrmap.util.debug.gdb.GDBRegisters;
+import rpm.elfconv.ESDBAddress;
+import rpm.elfconv.ExternalSymbolDB;
 import xstandard.arm.ARMDisassembler;
 import xstandard.arm.ThumbDisassembler;
+import xstandard.formats.yaml.Yaml;
+import xstandard.fs.FSFile;
+import xstandard.gui.file.XFileDialog;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Debugger tab for CTRMap. Connects to a GDB stub (e.g. melonDS), displays
@@ -33,6 +40,7 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 	private JButton btnConnect;
 	private JButton btnDisconnect;
 	private JLabel statusLabel;
+	private JLabel modeLabel;
 
 	// Control panel
 	private JButton btnContinue;
@@ -54,11 +62,19 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 	private DefaultListModel<String> bpListModel;
 	private JList<String> bpList;
 
+	// ESDB symbols
+	private ExternalSymbolDB esdb;
+	private final Map<Integer, String> symbolMap = new HashMap<>();
+	private JButton btnLoadSymbols;
+	private JLabel symbolsLabel;
+
 	// Track breakpoint info for removal
 	private final List<BreakpointInfo> breakpoints = new ArrayList<>();
 
 	private static final Color PC_HIGHLIGHT = new Color(255, 255, 180);
 	private static final Color REG_CHANGED = new Color(255, 200, 200);
+	private static final Color LABEL_COLOR = new Color(0, 0, 180);
+	private static final Color LABEL_BG = new Color(235, 240, 255);
 	private static final int DISASM_CONTEXT_BYTES = 128; // bytes before and after PC
 
 	public VDebuggerPanel(CTRMap cm) {
@@ -108,6 +124,7 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 		setControlsEnabled(false);
 		registerModel.updateRegisters(null);
 		disasmModel.clear();
+		SwingUtilities.invokeLater(() -> modeLabel.setText(""));
 	}
 
 	@Override
@@ -125,9 +142,30 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 				return;
 			}
 
+			// Read CPSR reliably via 'p' command using its GDB register number.
+			// The 'g' response position (index 16) SHOULD also be correct for melonDS,
+			// but using 'p' with the explicit regnum is guaranteed to match the target
+			// description XML, regardless of the stub's internal register ordering.
+			int cpsrFromG = regs[GDBRegisters.CPSR];
+			int cpsrFromP = gdbClient.readRegister(GDBRegisters.GDB_REGNUM_CPSR);
+
+			int cpsr;
+			if (cpsrFromG != cpsrFromP) {
+				System.out.println("[Debugger] CPSR mismatch: g[16]=0x" + Integer.toHexString(cpsrFromG)
+					+ " p19=0x" + Integer.toHexString(cpsrFromP) + " — using p value");
+				cpsr = cpsrFromP;
+				regs[GDBRegisters.CPSR] = cpsrFromP;
+			} else {
+				cpsr = cpsrFromG;
+			}
+
 			int pc = regs[GDBRegisters.PC];
-			int cpsr = regs[GDBRegisters.CPSR];
 			boolean thumb = GDBRegisters.isThumbMode(cpsr);
+
+			System.out.println("[Debugger] PC=0x" + Integer.toHexString(pc)
+				+ " CPSR=0x" + Integer.toHexString(cpsr)
+				+ " mode=" + (thumb ? "THUMB" : "ARM")
+				+ " flags=" + GDBRegisters.formatCPSRFlags(cpsr));
 
 			// Read memory around PC
 			int instrSize = thumb ? 2 : 4;
@@ -163,9 +201,13 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 			final int[] finalRegs = regs;
 			final List<DisassemblyTableModel.DisasmRow> finalRows = rows;
 			final int finalPcRow = pcRow;
+			final boolean isThumb = thumb;
+			final String flagStr = GDBRegisters.formatCPSRFlags(cpsr);
 			SwingUtilities.invokeLater(() -> {
 				registerModel.updateRegisters(finalRegs);
 				disasmModel.updateDisassembly(finalRows, finalPcRow);
+				modeLabel.setText(isThumb ? "THUMB" : "ARM");
+				modeLabel.setForeground(isThumb ? new Color(0, 128, 128) : new Color(128, 0, 128));
 
 				// Scroll to PC row
 				if (finalPcRow >= 0) {
@@ -182,6 +224,13 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 		int pcRow = -1;
 		for (int offset = 0; offset + 3 < memory.length; offset += 4) {
 			int addr = startAddr + offset;
+
+			// Insert symbol label if present
+			String sym = symbolMap.get(addr);
+			if (sym != null) {
+				rows.add(DisassemblyTableModel.DisasmRow.label(addr, sym));
+			}
+
 			int insn = (memory[offset] & 0xFF)
 				| ((memory[offset + 1] & 0xFF) << 8)
 				| ((memory[offset + 2] & 0xFF) << 16)
@@ -189,7 +238,11 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 
 			String hex = String.format("%08X", insn);
 			String mnemonic = ARMDisassembler.disassemble(insn, addr);
-			rows.add(new DisassemblyTableModel.DisasmRow(addr, hex, mnemonic));
+
+			// Annotate branch targets with symbol names
+			mnemonic = annotateBranchTarget(mnemonic);
+
+			rows.add(DisassemblyTableModel.DisasmRow.instruction(addr, hex, mnemonic));
 
 			if (addr == pc) {
 				pcRow = rows.size() - 1;
@@ -203,6 +256,13 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 		int offset = 0;
 		while (offset + 1 < memory.length) {
 			int addr = startAddr + offset;
+
+			// Insert symbol label if present
+			String sym = symbolMap.get(addr);
+			if (sym != null) {
+				rows.add(DisassemblyTableModel.DisasmRow.label(addr, sym));
+			}
+
 			int hw = (memory[offset] & 0xFF) | ((memory[offset + 1] & 0xFF) << 8);
 
 			if (ThumbDisassembler.isLongBranchPrefix(hw) && offset + 3 < memory.length) {
@@ -210,7 +270,8 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 				int hw2 = (memory[offset + 2] & 0xFF) | ((memory[offset + 3] & 0xFF) << 8);
 				String hex = String.format("%04X %04X", hw, hw2);
 				String mnemonic = ThumbDisassembler.disassembleLong(hw, hw2, addr);
-				rows.add(new DisassemblyTableModel.DisasmRow(addr, hex, mnemonic));
+				mnemonic = annotateBranchTarget(mnemonic);
+				rows.add(DisassemblyTableModel.DisasmRow.instruction(addr, hex, mnemonic));
 
 				if (addr == pc) {
 					pcRow = rows.size() - 1;
@@ -219,7 +280,8 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 			} else {
 				String hex = String.format("%04X", hw);
 				String mnemonic = ThumbDisassembler.disassemble(hw, addr);
-				rows.add(new DisassemblyTableModel.DisasmRow(addr, hex, mnemonic));
+				mnemonic = annotateBranchTarget(mnemonic);
+				rows.add(DisassemblyTableModel.DisasmRow.instruction(addr, hex, mnemonic));
 
 				if (addr == pc) {
 					pcRow = rows.size() - 1;
@@ -228,6 +290,63 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 			}
 		}
 		return pcRow;
+	}
+
+	/**
+	 * If a disassembled instruction has a branch target address (like "BL 0x02001234"),
+	 * check if that address has a symbol and append the name.
+	 */
+	private String annotateBranchTarget(String mnemonic) {
+		if (symbolMap.isEmpty()) {
+			return mnemonic;
+		}
+		// Look for hex address patterns like "0x02001234" at the end of branch instructions
+		int idx = mnemonic.lastIndexOf("0x");
+		if (idx < 0) {
+			return mnemonic;
+		}
+		String addrStr = mnemonic.substring(idx + 2);
+		try {
+			int targetAddr = (int) Long.parseLong(addrStr, 16);
+			String sym = symbolMap.get(targetAddr);
+			if (sym != null) {
+				return mnemonic + "  ; <" + sym + ">";
+			}
+		} catch (NumberFormatException e) {
+			// Not a parseable address
+		}
+		return mnemonic;
+	}
+
+	// --- ESDB symbol loading ---
+
+	private void onLoadSymbols() {
+		FSFile esdbFile = XFileDialog.openFileDialog("Open an ESDB symbol database", Yaml.EXTENSION_FILTER);
+		if (esdbFile != null) {
+			try {
+				esdb = new ExternalSymbolDB(esdbFile);
+				buildSymbolMap();
+				symbolsLabel.setText(symbolMap.size() + " symbols");
+				symbolsLabel.setForeground(new Color(0, 128, 0));
+			} catch (Exception e) {
+				symbolsLabel.setText("Error loading ESDB");
+				symbolsLabel.setForeground(Color.RED);
+				System.err.println("ESDB load error: " + e.getMessage());
+			}
+		}
+	}
+
+	private void buildSymbolMap() {
+		symbolMap.clear();
+		if (esdb == null) {
+			return;
+		}
+		for (ESDBAddress addr : esdb.getAddresses()) {
+			String name = esdb.getNameOfAddress(addr);
+			if (name != null) {
+				symbolMap.put(addr.address, name);
+			}
+		}
 	}
 
 	// --- Action handlers ---
@@ -312,12 +431,19 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 
 			new Thread(() -> {
 				try {
-					gdbClient.setBreakpoint(addr, kind);
+					boolean ok = gdbClient.setBreakpoint(addr, kind);
 					SwingUtilities.invokeLater(() -> {
-						String entry = String.format("0x%08X (%s)", addr, mode);
-						bpListModel.addElement(entry);
-						breakpoints.add(new BreakpointInfo(addr, kind));
-						bpAddressField.setText("");
+						if (ok) {
+							String label = symbolMap.getOrDefault(addr, "");
+							String entry = String.format("0x%08X (%s)%s", addr, mode,
+								label.isEmpty() ? "" : " " + label);
+							bpListModel.addElement(entry);
+							breakpoints.add(new BreakpointInfo(addr, kind));
+							bpAddressField.setText("");
+						} else {
+							statusLabel.setText("Breakpoint rejected by stub");
+							statusLabel.setForeground(Color.RED);
+						}
 					});
 				} catch (Exception e) {
 					System.err.println("Set breakpoint error: " + e.getMessage());
@@ -450,6 +576,20 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 		connPanel.add(Box.createHorizontalStrut(10));
 		connPanel.add(statusLabel);
 
+		modeLabel = new JLabel("");
+		modeLabel.setFont(modeLabel.getFont().deriveFont(Font.BOLD, 13f));
+		connPanel.add(Box.createHorizontalStrut(10));
+		connPanel.add(modeLabel);
+
+		connPanel.add(Box.createHorizontalStrut(16));
+		btnLoadSymbols = new JButton("Load Symbols");
+		btnLoadSymbols.addActionListener(e -> onLoadSymbols());
+		connPanel.add(btnLoadSymbols);
+
+		symbolsLabel = new JLabel("No symbols");
+		symbolsLabel.setForeground(Color.GRAY);
+		connPanel.add(symbolsLabel);
+
 		add(connPanel, BorderLayout.NORTH);
 
 		// === Center: Registers (left) + Disassembly (center) ===
@@ -497,18 +637,26 @@ public class VDebuggerPanel extends javax.swing.JPanel implements AbstractTabbed
 		disasmTable.getColumnModel().getColumn(1).setPreferredWidth(90);
 		disasmTable.getColumnModel().getColumn(2).setPreferredWidth(300);
 
-		// Highlight current PC row
+		// Custom renderer for disassembly: highlights PC row and styles labels
 		disasmTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
 			@Override
 			public Component getTableCellRendererComponent(JTable table, Object value,
 					boolean isSelected, boolean hasFocus, int row, int column) {
 				Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-				if (!isSelected && row == disasmModel.getPCRowIndex()) {
-					c.setBackground(PC_HIGHLIGHT);
-					c.setFont(c.getFont().deriveFont(Font.BOLD));
-				} else if (!isSelected) {
-					c.setBackground(Color.WHITE);
-					c.setFont(c.getFont().deriveFont(Font.PLAIN));
+				if (!isSelected) {
+					if (disasmModel.isLabelRow(row)) {
+						c.setBackground(LABEL_BG);
+						c.setForeground(LABEL_COLOR);
+						c.setFont(c.getFont().deriveFont(Font.BOLD));
+					} else if (row == disasmModel.getPCRowIndex()) {
+						c.setBackground(PC_HIGHLIGHT);
+						c.setForeground(Color.BLACK);
+						c.setFont(c.getFont().deriveFont(Font.BOLD));
+					} else {
+						c.setBackground(Color.WHITE);
+						c.setForeground(Color.BLACK);
+						c.setFont(c.getFont().deriveFont(Font.PLAIN));
+					}
 				}
 				return c;
 			}
