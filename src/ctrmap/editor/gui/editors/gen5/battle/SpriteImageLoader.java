@@ -253,12 +253,6 @@ public class SpriteImageLoader {
         Sprite2DTileSheet ts = res.tileSheets.get(0);
         Sprite2DPalette pal = res.palettes.get(0);
 
-        // Bitmap-mode: render directly from the reconstructed bitmap.
-        if (ts.rasterLayout) {
-            Sprite2DCell cell = res.cells.get(0);
-            return renderCellFromBitmap(cell, ts, pal);
-        }
-
         // Non-bitmap: use standard SpriteRenderer pipeline.
         BufferedImage raw = null;
         if (!res.multiCellAnimations.isEmpty() && !res.multiCells.isEmpty()) {

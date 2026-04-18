@@ -760,7 +760,6 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
         UI_UpdateTrainerSprite();
     }
     private void UI_UpdateTrainerSprite() {
-        // Stop any running animation
         if (spriteAnimTimer != null) {
             spriteAnimTimer.stop();
         }
@@ -776,6 +775,7 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
 
         int trainerClass = trainer.GetAssignedClass();
         VLaunchpad mc = Instance.getMissionControl(VLaunchpad.class);
+        
         List<BufferedImage> frames = SpriteImageLoader.loadTrainerSpriteFrames(
             mc.fs, mc.game, trainerClass);
 

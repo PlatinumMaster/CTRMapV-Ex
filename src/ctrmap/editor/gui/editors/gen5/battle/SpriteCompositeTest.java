@@ -81,14 +81,6 @@ public class SpriteCompositeTest {
             System.out.println("  Bitmap-direct: " + bmpDirect.getWidth() + "x" + bmpDirect.getHeight());
         }
 
-        // === Old NCGR-stride render for comparison ===
-        BufferedImage ncgrStride = SpriteRenderer.renderCell(cell, ts, pal, res.mappingMode);
-        if (ncgrStride != null && ncgrStride.getWidth() > 1) {
-            ImageIO.write(ncgrStride, "PNG",
-                new File(OUTPUT_DIR + "/class" + cls + "_ncgr_stride.png"));
-            System.out.println("  NCGR-stride:   " + ncgrStride.getWidth() + "x" + ncgrStride.getHeight());
-        }
-
         // === 96x96 preview from bitmap-direct ===
         if (bmpDirect != null) {
             ImageIO.write(placeInCanvas(bmpDirect, PREVIEW_SIZE, 1.0), "PNG",
