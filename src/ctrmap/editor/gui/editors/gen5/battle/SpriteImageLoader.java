@@ -205,29 +205,34 @@ public class SpriteImageLoader {
                 return Collections.emptyList();
             }
 
-            // Load all constituent files. Use the NCBR (file 0) — this is
-            // the 1D-mapped character block whose tile ordering matches what
-            // the NCER's OAM tileIndex values address. File 1 is a 2D-mapped
-            // display bitmap for editors; its tiles are in a different order
-            // and OAM indices won't land on the right body parts (famously
-            // cuts off Nate's feet).
-            FSFile ncgrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCBR);
-            if (ncgrFile == null) {
-                ncgrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCGR);
-            }
+            // BW/BW2 trainer NARCs ship TWO character blocks per class:
+            //   +0 NCBR — tiled / 1D-addressed (rasterLayout=false)
+            //   +1 NCGR — raster bitmap / 2D-addressed (rasterLayout=true)
+            // Which one the NCER's OAM tileIndex values address depends on
+            // the NCER's mapping mode (1D vs 2D). Load both; let
+            // Sprite2DResource.getActiveTileSheet() pick based on the NCER.
+            FSFile ncbrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCBR);
+            FSFile ncgrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCGR);
             FSFile nclrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCLR);
             FSFile ncerFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCER);
             FSFile nanrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NANR);
             FSFile nmcrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NMCR);
             FSFile nmarFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NMAR);
 
-            if (ncgrFile == null || nclrFile == null) {
+            if ((ncbrFile == null && ncgrFile == null) || nclrFile == null) {
                 return Collections.emptyList();
             }
 
-            // Build unified Sprite2DResource from all Nitro 2D files.
+            // Build unified Sprite2DResource from all Nitro 2D files. Both
+            // character blocks are imported; each becomes its own tile
+            // sheet (renamed to prevent the name-based merge dedup from
+            // collapsing them). getActiveTileSheet() picks the right one.
             Sprite2DResource res = new Sprite2DResource();
-            mergeImport(res, ncgrFile, ImportType.CGR, "NCGR");
+            if (ncbrFile != null) mergeImport(res, ncbrFile, ImportType.CGR, "NCBR");
+            if (ncgrFile != null) mergeImport(res, ncgrFile, ImportType.CGR, "NCGR");
+            for (int i = 0; i < res.tileSheets.size(); i++) {
+                res.tileSheets.get(i).name = "TileSheet_" + i;
+            }
             mergeImport(res, nclrFile, ImportType.CLR, "NCLR");
             mergeImport(res, ncerFile, ImportType.CER, "NCER");
             mergeImport(res, nanrFile, ImportType.ANR, "NANR");
@@ -274,10 +279,9 @@ public class SpriteImageLoader {
         if (res.cells.isEmpty() || res.tileSheets.isEmpty() || res.palettes.isEmpty()) {
             return null;
         }
-        Sprite2DTileSheet ts = res.tileSheets.get(0);
+        Sprite2DTileSheet ts = res.getActiveTileSheet();
         Sprite2DPalette pal = res.palettes.get(0);
 
-        // Non-bitmap: use standard SpriteRenderer pipeline.
         BufferedImage raw = null;
         if (!res.multiCellAnimations.isEmpty() && !res.multiCells.isEmpty()) {
             raw = SpriteRenderer.renderMultiCellAnimFrame(
