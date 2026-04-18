@@ -256,6 +256,83 @@ public class SpriteImageLoader {
         }
     }
 
+    /** Pokemon battle sprite preview size for party slot previews. */
+    private static final int POKEMON_BATTLE_PREVIEW_SIZE = 64;
+
+    /**
+     * Loads all animation frames of a Pokemon's FRONT battle sprite from the
+     * PML_G2D_POKE_SPRITE NARC (the full animated battle sprite, not the
+     * small party icon).
+     *
+     * <p>Layout per species (20 files):</p>
+     * <ul>
+     *   <li>+0  = NCGR (1D, rasterLayout=true per NitroPaint flags)</li>
+     *   <li>+2  = NCGR (bitmap / 2D-mapped)</li>
+     *   <li>+4  = NCER (species cells — 2D mapping for BW2 Pokemon)</li>
+     *   <li>+5  = NANR, +6 = NMCR, +7 = NMAR</li>
+     *   <li>+9..+17 = back sprite (skipped here — would collide on cell
+     *       names otherwise)</li>
+     *   <li>+18 = NCLR normal palette</li>
+     * </ul>
+     *
+     * <p>Only the front-sprite half is loaded to avoid the name-collision
+     * that makes front NCER entries point at back cells.</p>
+     *
+     * @return Animation frames at {@link #POKEMON_BATTLE_PREVIEW_SIZE}²,
+     *         or empty list if the NARC can't be read or the species has
+     *         no sprite data.
+     */
+    public static List<BufferedImage> loadPokemonBattleSpriteFrames(NTRGameFS fs, int speciesIndex) {
+        try {
+            if (NARCRef.PML_G2D_POKE_SPRITE.getARCID(null) < 0 && fs.NARCGetDataMax(NARCRef.PML_G2D_POKE_SPRITE) <= 0) {
+                return Collections.emptyList();
+            }
+            int maxFiles = fs.NARCGetDataMax(NARCRef.PML_G2D_POKE_SPRITE);
+            int base = speciesIndex * POKE_FILES_PER_SPECIES;
+            if (base + POKE_NCLR_NORMAL >= maxFiles) {
+                return Collections.emptyList();
+            }
+
+            // Load both front-half NCGRs (file +0 and +2). The BW2 Pokemon
+            // NCER has mapping=4 (2D), so getActiveTileSheet() picks the
+            // raster NCGR (+2, rasterLayout=true).
+            FSFile ncgr1d = loadNarcFile(fs, NARCRef.PML_G2D_POKE_SPRITE, base + POKE_FRONT_NCGR_1D);
+            FSFile ncgr2d = loadNarcFile(fs, NARCRef.PML_G2D_POKE_SPRITE, base + POKE_FRONT_NCGR_2D);
+            FSFile ncerFile = loadNarcFile(fs, NARCRef.PML_G2D_POKE_SPRITE, base + POKE_FRONT_NCER);
+            FSFile nanrFile = loadNarcFile(fs, NARCRef.PML_G2D_POKE_SPRITE, base + POKE_FRONT_NANR);
+            FSFile nmcrFile = loadNarcFile(fs, NARCRef.PML_G2D_POKE_SPRITE, base + POKE_FRONT_NMCR);
+            FSFile nmarFile = loadNarcFile(fs, NARCRef.PML_G2D_POKE_SPRITE, base + POKE_FRONT_NMAR);
+            FSFile nclrFile = loadNarcFile(fs, NARCRef.PML_G2D_POKE_SPRITE, base + POKE_NCLR_NORMAL);
+
+            if ((ncgr1d == null && ncgr2d == null) || nclrFile == null) {
+                return Collections.emptyList();
+            }
+
+            Sprite2DResource res = new Sprite2DResource();
+            if (ncgr1d != null) mergeImport(res, ncgr1d, ImportType.CGR, "NCGR_1D");
+            if (ncgr2d != null) mergeImport(res, ncgr2d, ImportType.CGR, "NCGR_2D");
+            for (int i = 0; i < res.tileSheets.size(); i++) {
+                res.tileSheets.get(i).name = "TileSheet_" + i;
+            }
+            mergeImport(res, nclrFile, ImportType.CLR, "NCLR");
+            mergeImport(res, ncerFile, ImportType.CER, "NCER");
+            mergeImport(res, nanrFile, ImportType.ANR, "NANR");
+            mergeImport(res, nmcrFile, ImportType.MCR, "NMCR");
+            mergeImport(res, nmarFile, ImportType.MAR, "NMAR");
+            res.linkTileSheetsToCells();
+
+            if (res.cells.isEmpty() || res.tileSheets.isEmpty() || res.palettes.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            return renderNmarTimeline(res, POKEMON_BATTLE_PREVIEW_SIZE);
+        } catch (Exception e) {
+            System.err.println("[SpriteImageLoader] loadPokemonBattleSpriteFrames failed for species "
+                + speciesIndex + ": " + e);
+            return Collections.emptyList();
+        }
+    }
+
     /**
      * Minimum ticks each MultiCell is shown when cycling for the preview.
      * Ensures even trivial 1-frame NMARs (BW2's idle pose) get enough
@@ -284,6 +361,10 @@ public class SpriteImageLoader {
      *         96x96 frames; empty if nothing renderable was found.
      */
     private static List<BufferedImage> renderNmarTimeline(Sprite2DResource res) {
+        return renderNmarTimeline(res, TRAINER_PREVIEW_SIZE);
+    }
+
+    private static List<BufferedImage> renderNmarTimeline(Sprite2DResource res, int previewSize) {
         if (res.cells.isEmpty() || res.tileSheets.isEmpty()
             || res.palettes.isEmpty() || res.multiCells.isEmpty()) {
             return Collections.emptyList();
@@ -379,16 +460,16 @@ public class SpriteImageLoader {
         int spriteW = globalMaxX - globalMinX;
         int spriteH = globalMaxY - globalMinY;
 
-        // Scale-to-fit factor so even oversized dancer sprites fit inside
-        // the 96x96 preview. Use uniform scale to preserve proportions.
+        // Scale-to-fit factor so even oversized sprites fit inside the
+        // preview. Use uniform scale to preserve proportions.
         double fit = Math.min(1.0,
-            Math.min((double) TRAINER_PREVIEW_SIZE / spriteW,
-                     (double) TRAINER_PREVIEW_SIZE / spriteH));
+            Math.min((double) previewSize / spriteW,
+                     (double) previewSize / spriteH));
 
         List<BufferedImage> out = new ArrayList<>();
         for (int t = 0; t < totalTicks; t++) {
             BufferedImage canvas = new BufferedImage(
-                TRAINER_PREVIEW_SIZE, TRAINER_PREVIEW_SIZE, BufferedImage.TYPE_INT_ARGB);
+                previewSize, previewSize, BufferedImage.TYPE_INT_ARGB);
             if (raw[t] != null) {
                 // Compute destination rect: this frame's sprite scaled to
                 // `fit`, centred horizontally, bottom-anchored so each
@@ -397,11 +478,11 @@ public class SpriteImageLoader {
                 int frameW = (int) Math.round(raw[t].getWidth() * fit);
                 int frameH = (int) Math.round(raw[t].getHeight() * fit);
                 int scaledSpriteH = (int) Math.round(spriteH * fit);
-                int baseline = TRAINER_PREVIEW_SIZE - ((TRAINER_PREVIEW_SIZE - scaledSpriteH) / 2);
+                int baseline = previewSize - ((previewSize - scaledSpriteH) / 2);
                 // Offset within the frame's own bbox from the global bbox
                 int dxInGlobal = rawMinX[t] - globalMinX;
                 int dyInGlobal = rawMinY[t] - globalMinY;
-                int dx = (TRAINER_PREVIEW_SIZE - (int) Math.round(spriteW * fit)) / 2
+                int dx = (previewSize - (int) Math.round(spriteW * fit)) / 2
                     + (int) Math.round(dxInGlobal * fit);
                 int dy = baseline - scaledSpriteH + (int) Math.round(dyInGlobal * fit);
                 Graphics2D g = canvas.createGraphics();

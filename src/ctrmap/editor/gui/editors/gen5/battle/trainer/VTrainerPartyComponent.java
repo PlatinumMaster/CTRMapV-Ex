@@ -9,6 +9,8 @@ import ctrmap.missioncontrol_ntr.fs.NTRGameFS;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 
@@ -24,6 +26,13 @@ public class VTrainerPartyComponent extends JPanel {
     private JSpinner levelSpinner, formSpinner, ivSpinner;
     private JComboBox<String> abilityComboBox, genderComboBox, heldItemComboBox;
     private JComboBox<String> Move1ComboBox, Move2ComboBox, Move3ComboBox, Move4ComboBox;
+
+    // Sprite animation state — mirrors VTrainerEditor's setup so the
+    // full battle sprite plays its NMAR cycle in the party slot preview.
+    private List<ImageIcon> spriteFrames = new ArrayList<>();
+    private int spriteAnimIndex = 0;
+    private Timer spriteAnimTimer;
+    private static final int SPRITE_ANIM_INTERVAL_MS = 16;
 
     public VTrainerPartyComponent(CTRMap Instance, WBTrainerPoke Pkmn, int slotIndex,
             TextFile PkmnNames, TextFile ItemNames, TextFile MoveNames, Runnable onRemove) {
@@ -141,20 +150,57 @@ public class VTrainerPartyComponent extends JPanel {
     }
 
     private void loadPokemonIcon(int speciesIndex) {
+        // Stop any running animation and reset state before loading the
+        // new species' frames.
+        if (spriteAnimTimer != null) {
+            spriteAnimTimer.stop();
+        }
+        spriteFrames.clear();
+        spriteAnimIndex = 0;
+
         try {
-            BufferedImage icon = SpriteImageLoader.loadPokemonIcon(FS(), speciesIndex);
-            if (icon != null) {
-                Image scaled = icon.getScaledInstance(64, 64, Image.SCALE_REPLICATE);
-                previewLabel.setIcon(new ImageIcon(scaled));
-                previewLabel.setText("");
-            } else {
-                previewLabel.setIcon(null);
-                previewLabel.setText("No Icon");
+            List<BufferedImage> frames = SpriteImageLoader
+                .loadPokemonBattleSpriteFrames(FS(), speciesIndex);
+
+            // Fall back to the small party icon if the battle sprite NARC
+            // is missing or this species has no sprite data — keeps BW1
+            // (where only the icon NARC is present) and sparse-sprite ROMs
+            // working.
+            if (frames.isEmpty()) {
+                BufferedImage icon = SpriteImageLoader.loadPokemonIcon(FS(), speciesIndex);
+                if (icon != null) {
+                    Image scaled = icon.getScaledInstance(64, 64, Image.SCALE_REPLICATE);
+                    previewLabel.setIcon(new ImageIcon(scaled));
+                    previewLabel.setText("");
+                } else {
+                    previewLabel.setIcon(null);
+                    previewLabel.setText("No Sprite");
+                }
+                return;
+            }
+
+            for (BufferedImage frame : frames) {
+                spriteFrames.add(new ImageIcon(frame));
+            }
+            previewLabel.setIcon(spriteFrames.get(0));
+            previewLabel.setText("");
+
+            if (spriteFrames.size() > 1) {
+                if (spriteAnimTimer == null) {
+                    spriteAnimTimer = new Timer(SPRITE_ANIM_INTERVAL_MS, e -> advanceSpriteAnim());
+                }
+                spriteAnimTimer.start();
             }
         } catch (Exception e) {
             previewLabel.setIcon(null);
             previewLabel.setText("?");
         }
+    }
+
+    private void advanceSpriteAnim() {
+        if (spriteFrames.isEmpty()) return;
+        spriteAnimIndex = (spriteAnimIndex + 1) % spriteFrames.size();
+        previewLabel.setIcon(spriteFrames.get(spriteAnimIndex));
     }
 
     private void initLayout(int slotIndex) {
