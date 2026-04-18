@@ -171,7 +171,15 @@ public class SpriteImageLoader {
     }
 
     /** Hard cap on frames returned per trainer to keep memory bounded. */
-    private static final int MAX_TRAINER_FRAMES = 120;
+    private static final int MAX_TRAINER_FRAMES = 240;
+
+    /**
+     * Minimum ticks each NMAR is played in the preview. Ensures NMARs
+     * with trivial 4-tick single-frame contents (the BW2 dancer case,
+     * where each pose is its own NMAR) stay on screen long enough for
+     * the sub-NANR body-part animations to complete at least one cycle.
+     */
+    private static final int MIN_NMAR_PLAY_TICKS = 60;
 
     /**
      * Loads all animation frames of a trainer battle sprite by walking the
@@ -284,10 +292,20 @@ public class SpriteImageLoader {
      */
     public static List<BufferedImage> loadPokemonBattleSpriteFrames(NTRGameFS fs, int speciesIndex) {
         try {
-            if (NARCRef.PML_G2D_POKE_SPRITE.getARCID(null) < 0 && fs.NARCGetDataMax(NARCRef.PML_G2D_POKE_SPRITE) <= 0) {
+            if (speciesIndex < 0) {
                 return Collections.emptyList();
             }
-            int maxFiles = fs.NARCGetDataMax(NARCRef.PML_G2D_POKE_SPRITE);
+            int maxFiles;
+            try {
+                maxFiles = fs.NARCGetDataMax(NARCRef.PML_G2D_POKE_SPRITE);
+            } catch (Exception e) {
+                // NARC not present in this ROM (BW1 before patches, partial
+                // dumps). Fall back to the icon silently.
+                return Collections.emptyList();
+            }
+            if (maxFiles <= 0) {
+                return Collections.emptyList();
+            }
             int base = speciesIndex * POKE_FILES_PER_SPECIES;
             if (base + POKE_NCLR_NORMAL >= maxFiles) {
                 return Collections.emptyList();
@@ -334,31 +352,78 @@ public class SpriteImageLoader {
     }
 
     /**
-     * Minimum ticks each MultiCell is shown when cycling for the preview.
-     * Ensures even trivial 1-frame NMARs (BW2's idle pose) get enough
-     * ticks to let their sub-NANRs breathe, and that multi-MC trainers
-     * spend a visible pause on each pose.
+     * Computes how long to hold a MultiCell so its longest sub-NANR
+     * completes at least one full cycle. Minimum of
+     * {@link #MIN_NMAR_PLAY_TICKS} so trivial 1-frame sub-NANRs still
+     * stay on screen long enough for the user to see.
      */
-    private static final int MIN_TICKS_PER_MC = 30;
+    private static int perMcHoldTicks(int mcIdx, Sprite2DResource res) {
+        if (mcIdx < 0 || mcIdx >= res.multiCells.size()) return MIN_NMAR_PLAY_TICKS;
+        int longest = MIN_NMAR_PLAY_TICKS;
+        for (Sprite2DMultiCell.MultiCellEntry e : res.multiCells.get(mcIdx).entries) {
+            if (e.animIndex >= 0 && e.animIndex < res.cellAnimations.size()) {
+                int d = res.cellAnimations.get(e.animIndex).getTotalDuration();
+                if (d > longest) longest = d;
+            }
+        }
+        return longest;
+    }
 
     /**
-     * Walks the NMAR timeline and renders one 96x96 canvas per NDS tick.
+     * Appends this NMAR's tick-by-tick MultiCell schedule to {@code out}.
+     * The NMAR's authored frame durations are respected, but the whole
+     * NMAR loops until it has run for at least the longest sub-NANR
+     * cycle of any referenced MultiCell (so even 4-tick "placeholder"
+     * NMARs visible in BW2 dancer sprites hold long enough for the
+     * body-part animations to play).
+     */
+    private static void appendNmarToSchedule(java.util.List<Integer> out,
+            Sprite2DMultiCellAnimation anim, Sprite2DResource res) {
+        if (anim.frames.isEmpty()) return;
+        int nmarIntrinsic = 0;
+        int subNanrMax = MIN_NMAR_PLAY_TICKS;
+        for (Sprite2DMultiCellAnimation.MultiCellAnimFrame f : anim.frames) {
+            nmarIntrinsic += Math.max(1, f.duration);
+            int h = perMcHoldTicks(f.multiCellIndex, res);
+            if (h > subNanrMax) subNanrMax = h;
+        }
+        int target = Math.max(subNanrMax, nmarIntrinsic);
+        int played = 0;
+        while (played < target && out.size() < MAX_TRAINER_FRAMES) {
+            for (Sprite2DMultiCellAnimation.MultiCellAnimFrame f : anim.frames) {
+                int dur = Math.max(1, f.duration);
+                int mcIdx = (f.multiCellIndex >= 0 && f.multiCellIndex < res.multiCells.size())
+                    ? f.multiCellIndex : 0;
+                for (int i = 0; i < dur && played < target && out.size() < MAX_TRAINER_FRAMES; i++) {
+                    out.add(mcIdx);
+                    played++;
+                }
+            }
+        }
+    }
+
+    /**
+     * Walks the full NMAR timeline across every NMAR in the resource and
+     * renders one canvas per NDS tick.
      *
      * <p>Strategy:</p>
      * <ul>
-     *   <li>If the resource has a non-trivial NMAR[0] (more than one frame
-     *       or multi-MC references), play NMAR[0] natively — matches
-     *       in-battle behaviour.</li>
-     *   <li>Otherwise, for preview purposes, cycle through every NMAR the
-     *       file contains (each for at least {@link #MIN_TICKS_PER_MC}
-     *       ticks) so the user sees all the poses authored into the
-     *       sprite — e.g. dancer trainers with 3 separate NMARs each
-     *       pointing at a different pose get all three in sequence.</li>
-     *   <li>Fallback: cycle through MultiCells directly if no NMAR.</li>
+     *   <li>For each NMAR in {@code res.multiCellAnimations} (in order),
+     *       play it for at least {@link #MIN_NMAR_PLAY_TICKS} ticks —
+     *       long enough for the sub-NANR body-part animations inside the
+     *       referenced MultiCells to complete their cycles even when the
+     *       NMAR itself is a trivial 4-tick single-frame pose placeholder.</li>
+     *   <li>If NMAR has multiple frames, play them in sequence (each
+     *       frame picks one MultiCell for its authored duration) and
+     *       loop the NMAR as many times as needed to fill the minimum
+     *       ticks.</li>
+     *   <li>If the resource has no NMARs, cycle through every MultiCell.</li>
+     *   <li>Always caps at {@link #MAX_TRAINER_FRAMES} to bound memory.</li>
      * </ul>
      *
      * @return a list of up to {@link #MAX_TRAINER_FRAMES} pre-rendered
-     *         96x96 frames; empty if nothing renderable was found.
+     *         frames at {@code previewSize}²; empty if nothing renderable
+     *         was found.
      */
     private static List<BufferedImage> renderNmarTimeline(Sprite2DResource res) {
         return renderNmarTimeline(res, TRAINER_PREVIEW_SIZE);
@@ -370,63 +435,31 @@ public class SpriteImageLoader {
             return Collections.emptyList();
         }
 
-        int[] mcAtTick;
-        int totalTicks;
-
-        // Check if NMAR[0] is "rich" enough to play directly (more than
-        // one frame, or references a non-zero MC index).
-        boolean richNmar = false;
+        // Build the tick-to-MC lookup by walking every NMAR.
+        java.util.List<Integer> schedule = new java.util.ArrayList<>();
         if (!res.multiCellAnimations.isEmpty()) {
-            Sprite2DMultiCellAnimation anim0 = res.multiCellAnimations.get(0);
-            if (anim0.frames.size() > 1) {
-                richNmar = true;
-            } else if (anim0.frames.size() == 1) {
-                int mc = anim0.frames.get(0).multiCellIndex;
-                if (mc > 0 && mc < res.multiCells.size()) richNmar = true;
+            for (Sprite2DMultiCellAnimation anim : res.multiCellAnimations) {
+                appendNmarToSchedule(schedule, anim, res);
+                if (schedule.size() >= MAX_TRAINER_FRAMES) break;
             }
         }
-
-        if (richNmar) {
-            Sprite2DMultiCellAnimation anim = res.multiCellAnimations.get(0);
-            int sum = 0;
-            for (Sprite2DMultiCellAnimation.MultiCellAnimFrame f : anim.frames) {
-                sum += Math.max(1, f.duration);
-            }
-            totalTicks = Math.min(sum, MAX_TRAINER_FRAMES);
-            mcAtTick = new int[totalTicks];
-            int cursor = 0;
-            for (Sprite2DMultiCellAnimation.MultiCellAnimFrame f : anim.frames) {
-                int dur = Math.max(1, f.duration);
-                int mcIdx = (f.multiCellIndex >= 0 && f.multiCellIndex < res.multiCells.size())
-                    ? f.multiCellIndex : 0;
-                for (int i = 0; i < dur && cursor < totalTicks; i++) {
-                    mcAtTick[cursor++] = mcIdx;
-                }
-                if (cursor >= totalTicks) break;
-            }
-        } else if (res.multiCells.size() > 1) {
-            // Multiple MCs but no rich NMAR — cycle through each MC for
-            // the preview so the user sees all authored poses (dancer
-            // trainers with 3 NMARs each referencing a different MC).
-            int perMc = Math.max(MIN_TICKS_PER_MC,
-                MAX_TRAINER_FRAMES / res.multiCells.size());
-            totalTicks = Math.min(perMc * res.multiCells.size(), MAX_TRAINER_FRAMES);
-            mcAtTick = new int[totalTicks];
-            for (int i = 0; i < totalTicks; i++) {
-                mcAtTick[i] = (i / perMc) % res.multiCells.size();
-            }
-        } else {
-            // Single MC, static NMAR — play MC[0] long enough for its
-            // sub-NANRs to complete their longest cycle.
-            long longestNanr = 1;
-            for (Sprite2DMultiCell.MultiCellEntry e : res.multiCells.get(0).entries) {
-                if (e.animIndex >= 0 && e.animIndex < res.cellAnimations.size()) {
-                    int d = res.cellAnimations.get(e.animIndex).getTotalDuration();
-                    if (d > longestNanr) longestNanr = d;
+        // No NMAR data — cycle through MCs directly.
+        if (schedule.isEmpty()) {
+            for (int mc = 0; mc < res.multiCells.size()
+                && schedule.size() < MAX_TRAINER_FRAMES; mc++) {
+                int hold = perMcHoldTicks(mc, res);
+                for (int t = 0; t < hold && schedule.size() < MAX_TRAINER_FRAMES; t++) {
+                    schedule.add(mc);
                 }
             }
-            totalTicks = (int) Math.min(Math.max(longestNanr, MIN_TICKS_PER_MC), MAX_TRAINER_FRAMES);
-            mcAtTick = new int[totalTicks]; // all zeros → MC[0]
+        }
+        if (schedule.isEmpty()) {
+            return Collections.emptyList();
+        }
+        int totalTicks = Math.min(schedule.size(), MAX_TRAINER_FRAMES);
+        int[] mcAtTick = new int[totalTicks];
+        for (int i = 0; i < totalTicks; i++) {
+            mcAtTick[i] = schedule.get(i);
         }
 
         // First pass: render each tick into raw bbox-cropped images and

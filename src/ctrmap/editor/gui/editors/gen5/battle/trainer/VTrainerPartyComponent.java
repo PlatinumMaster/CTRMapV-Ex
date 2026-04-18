@@ -159,23 +159,16 @@ public class VTrainerPartyComponent extends JPanel {
         spriteAnimIndex = 0;
 
         try {
+            // Loads the full animated battle sprite from NARC 004
+            // (PML_G2D_POKE_SPRITE), NOT the small party icon at NARC 007.
+            // Every species including 0 has sprite data in 004 — placeholder
+            // slots render as "?" which is their authored content.
             List<BufferedImage> frames = SpriteImageLoader
                 .loadPokemonBattleSpriteFrames(FS(), speciesIndex);
 
-            // Fall back to the small party icon if the battle sprite NARC
-            // is missing or this species has no sprite data — keeps BW1
-            // (where only the icon NARC is present) and sparse-sprite ROMs
-            // working.
             if (frames.isEmpty()) {
-                BufferedImage icon = SpriteImageLoader.loadPokemonIcon(FS(), speciesIndex);
-                if (icon != null) {
-                    Image scaled = icon.getScaledInstance(64, 64, Image.SCALE_REPLICATE);
-                    previewLabel.setIcon(new ImageIcon(scaled));
-                    previewLabel.setText("");
-                } else {
-                    previewLabel.setIcon(null);
-                    previewLabel.setText("No Sprite");
-                }
+                previewLabel.setIcon(null);
+                previewLabel.setText("No Sprite");
                 return;
             }
 
