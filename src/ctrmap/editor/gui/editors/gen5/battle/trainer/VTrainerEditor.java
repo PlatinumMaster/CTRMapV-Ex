@@ -109,8 +109,13 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
     // Sprite animation state
     private List<ImageIcon> spriteFrames = new ArrayList<>();
     private int spriteAnimIndex = 0;
-    /** Interval between animation frames in ms (~130ms matches Bulbapedia). */
-    private static final int SPRITE_ANIM_INTERVAL_MS = 130;
+    /**
+     * Interval between animation frames in ms. Each frame represents one
+     * NDS tick (~16.67ms at 60 Hz). SpriteImageLoader pre-renders one
+     * frame per NMAR tick, so advancing once per 16 ms here plays the
+     * animation at native in-game speed.
+     */
+    private static final int SPRITE_ANIM_INTERVAL_MS = 16;
     private Timer spriteAnimTimer;
 
     public VTrainerEditor(CTRMap Instance) {

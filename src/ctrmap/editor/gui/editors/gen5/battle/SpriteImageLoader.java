@@ -2,6 +2,8 @@ package ctrmap.editor.gui.editors.gen5.battle;
 
 import ctrmap.creativestudio.ngcs2d.canvas.SpriteRenderer;
 import ctrmap.creativestudio.ngcs2d.res.Sprite2DCell;
+import ctrmap.creativestudio.ngcs2d.res.Sprite2DMultiCell;
+import ctrmap.creativestudio.ngcs2d.res.Sprite2DMultiCellAnimation;
 import ctrmap.creativestudio.ngcs2d.res.Sprite2DOAM;
 import ctrmap.creativestudio.ngcs2d.res.Sprite2DPalette;
 import ctrmap.creativestudio.ngcs2d.res.Sprite2DResource;
@@ -168,26 +170,28 @@ public class SpriteImageLoader {
         return frames.isEmpty() ? null : frames.get(0);
     }
 
-    /** Number of frames in one full breathing cycle. */
-    private static final int BREATH_FRAME_COUNT = 32;
-
-    /** Peak vertical scale offset for the breathing animation (±2%). */
-    private static final double BREATH_AMPLITUDE = 0.02;
+    /** Hard cap on frames returned per trainer to keep memory bounded. */
+    private static final int MAX_TRAINER_FRAMES = 120;
 
     /**
-     * Loads all animation frames of a trainer battle sprite.
+     * Loads all animation frames of a trainer battle sprite by walking the
+     * NMAR's timeline. For each NDS tick in the full cycle we:
+     * <ol>
+     *   <li>Look up which NMAR frame is active at that tick (each NMAR
+     *       frame has a duration and picks one MultiCell).</li>
+     *   <li>Render that MultiCell at the tick, so each entry's sub-NANR
+     *       advances in real time.</li>
+     *   <li>Paint the result bottom-anchored into a 96x96 canvas.</li>
+     * </ol>
+     * This drives the whole NMAR → NMCR → NANR → NCER → NCGR chain from
+     * the actual sprite data; trainers with multiple poses (dancers at
+     * class 38+) animate those poses as authored.
      *
-     * BW2 trainer sprites are rendered from a single NCER cell composited
-     * via NMCR/NMAR, with body-part tiles sourced from a bitmap-mode NCGR
-     * (file 1). The NANR/NMAR each contain exactly one frame — the
-     * "breathing" animation visible on Bulbapedia is driven entirely by
-     * the game engine, which applies a subtle sinusoidal vertical scale
-     * to the rendered sprite, anchored at the feet.
-     *
-     * This method renders the static base sprite and generates
-     * {@value #BREATH_FRAME_COUNT} frames of the breathing cycle via
-     * programmatic vertical scaling. The caller should play these
-     * sequentially in a loop.
+     * <p>For trainers whose NMAR is a single-frame idle (the common
+     * Hilbert/Rosa case), the return list collapses to one frame and the
+     * UI just shows a static sprite — matching in-battle behaviour
+     * (the "breathing" oscillation is a UI effect added by the battle
+     * engine, not part of the sprite data).</p>
      *
      * Returns a list of 96x96 images, or an empty list if the sprite
      * cannot be loaded (e.g. BW1, missing files).
@@ -244,22 +248,171 @@ public class SpriteImageLoader {
                 return Collections.emptyList();
             }
 
-            // Render the static base sprite. BW2 trainer NMARs are 1-frame
-            // idle poses; the in-game "breathing" oscillation is a battle
-            // UI effect, not part of the sprite data — we deliberately do
-            // NOT fake it here because it was incorrect (trainers stand
-            // still in the battle editor preview, matching NitroPaint's
-            // Multi-Cell Viewer behaviour).
-            BufferedImage raw = renderBestAvailable(res);
-            if (raw == null || raw.getWidth() <= 1) {
-                return Collections.emptyList();
-            }
-            return Collections.singletonList(scaleToPreviewWithBreath(raw, TRAINER_PREVIEW_SIZE, 1.0));
+            return renderNmarTimeline(res);
         } catch (Exception e) {
             System.err.println("[SpriteImageLoader] loadTrainerSpriteFrames failed for class " + trainerClassIndex + ": " + e);
             e.printStackTrace();
             return Collections.emptyList();
         }
+    }
+
+    /**
+     * Minimum ticks each MultiCell is shown when cycling for the preview.
+     * Ensures even trivial 1-frame NMARs (BW2's idle pose) get enough
+     * ticks to let their sub-NANRs breathe, and that multi-MC trainers
+     * spend a visible pause on each pose.
+     */
+    private static final int MIN_TICKS_PER_MC = 30;
+
+    /**
+     * Walks the NMAR timeline and renders one 96x96 canvas per NDS tick.
+     *
+     * <p>Strategy:</p>
+     * <ul>
+     *   <li>If the resource has a non-trivial NMAR[0] (more than one frame
+     *       or multi-MC references), play NMAR[0] natively — matches
+     *       in-battle behaviour.</li>
+     *   <li>Otherwise, for preview purposes, cycle through every NMAR the
+     *       file contains (each for at least {@link #MIN_TICKS_PER_MC}
+     *       ticks) so the user sees all the poses authored into the
+     *       sprite — e.g. dancer trainers with 3 separate NMARs each
+     *       pointing at a different pose get all three in sequence.</li>
+     *   <li>Fallback: cycle through MultiCells directly if no NMAR.</li>
+     * </ul>
+     *
+     * @return a list of up to {@link #MAX_TRAINER_FRAMES} pre-rendered
+     *         96x96 frames; empty if nothing renderable was found.
+     */
+    private static List<BufferedImage> renderNmarTimeline(Sprite2DResource res) {
+        if (res.cells.isEmpty() || res.tileSheets.isEmpty()
+            || res.palettes.isEmpty() || res.multiCells.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        int[] mcAtTick;
+        int totalTicks;
+
+        // Check if NMAR[0] is "rich" enough to play directly (more than
+        // one frame, or references a non-zero MC index).
+        boolean richNmar = false;
+        if (!res.multiCellAnimations.isEmpty()) {
+            Sprite2DMultiCellAnimation anim0 = res.multiCellAnimations.get(0);
+            if (anim0.frames.size() > 1) {
+                richNmar = true;
+            } else if (anim0.frames.size() == 1) {
+                int mc = anim0.frames.get(0).multiCellIndex;
+                if (mc > 0 && mc < res.multiCells.size()) richNmar = true;
+            }
+        }
+
+        if (richNmar) {
+            Sprite2DMultiCellAnimation anim = res.multiCellAnimations.get(0);
+            int sum = 0;
+            for (Sprite2DMultiCellAnimation.MultiCellAnimFrame f : anim.frames) {
+                sum += Math.max(1, f.duration);
+            }
+            totalTicks = Math.min(sum, MAX_TRAINER_FRAMES);
+            mcAtTick = new int[totalTicks];
+            int cursor = 0;
+            for (Sprite2DMultiCellAnimation.MultiCellAnimFrame f : anim.frames) {
+                int dur = Math.max(1, f.duration);
+                int mcIdx = (f.multiCellIndex >= 0 && f.multiCellIndex < res.multiCells.size())
+                    ? f.multiCellIndex : 0;
+                for (int i = 0; i < dur && cursor < totalTicks; i++) {
+                    mcAtTick[cursor++] = mcIdx;
+                }
+                if (cursor >= totalTicks) break;
+            }
+        } else if (res.multiCells.size() > 1) {
+            // Multiple MCs but no rich NMAR — cycle through each MC for
+            // the preview so the user sees all authored poses (dancer
+            // trainers with 3 NMARs each referencing a different MC).
+            int perMc = Math.max(MIN_TICKS_PER_MC,
+                MAX_TRAINER_FRAMES / res.multiCells.size());
+            totalTicks = Math.min(perMc * res.multiCells.size(), MAX_TRAINER_FRAMES);
+            mcAtTick = new int[totalTicks];
+            for (int i = 0; i < totalTicks; i++) {
+                mcAtTick[i] = (i / perMc) % res.multiCells.size();
+            }
+        } else {
+            // Single MC, static NMAR — play MC[0] long enough for its
+            // sub-NANRs to complete their longest cycle.
+            long longestNanr = 1;
+            for (Sprite2DMultiCell.MultiCellEntry e : res.multiCells.get(0).entries) {
+                if (e.animIndex >= 0 && e.animIndex < res.cellAnimations.size()) {
+                    int d = res.cellAnimations.get(e.animIndex).getTotalDuration();
+                    if (d > longestNanr) longestNanr = d;
+                }
+            }
+            totalTicks = (int) Math.min(Math.max(longestNanr, MIN_TICKS_PER_MC), MAX_TRAINER_FRAMES);
+            mcAtTick = new int[totalTicks]; // all zeros → MC[0]
+        }
+
+        // First pass: render each tick into raw bbox-cropped images and
+        // track the global max extents so we can centre them in a shared
+        // bottom-anchored canvas.
+        BufferedImage[] raw = new BufferedImage[totalTicks];
+        int[] rawMinX = new int[totalTicks];
+        int[] rawMinY = new int[totalTicks];
+        int globalMinX = Integer.MAX_VALUE, globalMinY = Integer.MAX_VALUE;
+        int globalMaxX = Integer.MIN_VALUE, globalMaxY = Integer.MIN_VALUE;
+        for (int t = 0; t < totalTicks; t++) {
+            int mcIdx = mcAtTick[t];
+            if (mcIdx < 0 || mcIdx >= res.multiCells.size()) continue;
+            SpriteRenderer.MultiCellLayout layout =
+                SpriteRenderer.layoutMultiCell(res.multiCells.get(mcIdx), res, (long) t);
+            if (layout == null || layout.image == null) continue;
+            raw[t] = layout.image;
+            rawMinX[t] = layout.unionMinX;
+            rawMinY[t] = layout.unionMinY;
+            int x0 = layout.unionMinX, y0 = layout.unionMinY;
+            int x1 = x0 + layout.image.getWidth();
+            int y1 = y0 + layout.image.getHeight();
+            if (x0 < globalMinX) globalMinX = x0;
+            if (y0 < globalMinY) globalMinY = y0;
+            if (x1 > globalMaxX) globalMaxX = x1;
+            if (y1 > globalMaxY) globalMaxY = y1;
+        }
+        if (globalMinX == Integer.MAX_VALUE) {
+            return Collections.emptyList();
+        }
+        int spriteW = globalMaxX - globalMinX;
+        int spriteH = globalMaxY - globalMinY;
+
+        // Scale-to-fit factor so even oversized dancer sprites fit inside
+        // the 96x96 preview. Use uniform scale to preserve proportions.
+        double fit = Math.min(1.0,
+            Math.min((double) TRAINER_PREVIEW_SIZE / spriteW,
+                     (double) TRAINER_PREVIEW_SIZE / spriteH));
+
+        List<BufferedImage> out = new ArrayList<>();
+        for (int t = 0; t < totalTicks; t++) {
+            BufferedImage canvas = new BufferedImage(
+                TRAINER_PREVIEW_SIZE, TRAINER_PREVIEW_SIZE, BufferedImage.TYPE_INT_ARGB);
+            if (raw[t] != null) {
+                // Compute destination rect: this frame's sprite scaled to
+                // `fit`, centred horizontally, bottom-anchored so each
+                // frame's feet land on the same baseline as the global
+                // union's bottom.
+                int frameW = (int) Math.round(raw[t].getWidth() * fit);
+                int frameH = (int) Math.round(raw[t].getHeight() * fit);
+                int scaledSpriteH = (int) Math.round(spriteH * fit);
+                int baseline = TRAINER_PREVIEW_SIZE - ((TRAINER_PREVIEW_SIZE - scaledSpriteH) / 2);
+                // Offset within the frame's own bbox from the global bbox
+                int dxInGlobal = rawMinX[t] - globalMinX;
+                int dyInGlobal = rawMinY[t] - globalMinY;
+                int dx = (TRAINER_PREVIEW_SIZE - (int) Math.round(spriteW * fit)) / 2
+                    + (int) Math.round(dxInGlobal * fit);
+                int dy = baseline - scaledSpriteH + (int) Math.round(dyInGlobal * fit);
+                Graphics2D g = canvas.createGraphics();
+                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+                g.drawImage(raw[t], dx, dy, frameW, frameH, null);
+                g.dispose();
+            }
+            out.add(canvas);
+        }
+        return out;
     }
 
     /**
