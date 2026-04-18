@@ -74,9 +74,13 @@ public class VProjectSetupParams {
                                                                         sb.append(pl).append(":\n");
                                                                 }
                                                         }
-                                                        // Emit the instruction's own label (LABEL_xxxx, sub_xxxx) if different from publics
-                                                        if (call.label != null && (pubLabels == null || !pubLabels.contains(call.label))) {
-                                                                sb.append(call.label).append(":\n");
+                                                        // Emit the instruction's own labels (LABEL_xxxx, sub_xxxx) if different from publics
+                                                        if (call.labels != null) {
+                                                                for (String lbl : call.labels) {
+                                                                        if (pubLabels == null || !pubLabels.contains(lbl)) {
+                                                                                sb.append(lbl).append(":\n");
+                                                                        }
+                                                                }
                                                         }
                                                         sb.append("  ");
                                                         if (call.command != null) {
@@ -87,10 +91,13 @@ public class VProjectSetupParams {
                                                         for (int i = 0; i < call.args.length; i++) {
                                                                 if (call.link != null && call.link.argIdx == i && call.link.target != null) {
                                                                         DisassembledCall target = (DisassembledCall) call.link.target;
-                                                                        if (target.label == null) {
-                                                                                target.label = "LABEL_" + FormattingUtils.getStrWithLeadingZeros(4, Integer.toHexString(target.pointer));
+                                                                        if (target.labels == null || target.labels.isEmpty()) {
+                                                                                if (target.labels == null) {
+                                                                                        target.labels = new java.util.ArrayList<>();
+                                                                                }
+                                                                                target.labels.add("LABEL_" + FormattingUtils.getStrWithLeadingZeros(4, Integer.toHexString(target.pointer)));
                                                                         }
-                                                                        sb.append(" ").append(target.label);
+                                                                        sb.append(" ").append(target.labels.get(0));
                                                                 } else {
                                                                         sb.append(" ").append(call.args[i]);
                                                                 }
