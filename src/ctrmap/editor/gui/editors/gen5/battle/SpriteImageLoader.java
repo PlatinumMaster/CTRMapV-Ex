@@ -53,6 +53,31 @@ public class SpriteImageLoader {
     private static final int TRAINER_OFF_XFORM = 6;
     private static final int TRAINER_OFF_NCLR = 7;
 
+    /**
+     * Pokemon battle sprite NARC layout (20 files per species). The 20 slots
+     * are split into two parallel halves — a front sprite set (files +0..+8)
+     * and a back sprite set (files +9..+17) — followed by two shared
+     * palettes (files +18 = normal, +19 = shiny). Loading BOTH halves into
+     * the same {@link Sprite2DResource} collides on cell names (both NCERs
+     * use "Cell_0", "Cell_1", ...), so the front NMCR ends up pointing at
+     * back-sprite cells. Always load exactly one half.
+     */
+    private static final int POKE_FILES_PER_SPECIES = 20;
+    private static final int POKE_FRONT_NCGR_1D = 0;   // bitmap / 1D-mapped
+    private static final int POKE_FRONT_NCGR_2D = 2;   // tiled / 2D-mapped
+    private static final int POKE_FRONT_NCER = 4;
+    private static final int POKE_FRONT_NANR = 5;
+    private static final int POKE_FRONT_NMCR = 6;
+    private static final int POKE_FRONT_NMAR = 7;
+    private static final int POKE_BACK_NCGR_1D = 9;
+    private static final int POKE_BACK_NCGR_2D = 11;
+    private static final int POKE_BACK_NCER = 13;
+    private static final int POKE_BACK_NANR = 14;
+    private static final int POKE_BACK_NMCR = 15;
+    private static final int POKE_BACK_NMAR = 16;
+    private static final int POKE_NCLR_NORMAL = 18;
+    private static final int POKE_NCLR_SHINY = 19;
+
     /** Trainer preview output size in pixels. */
     private static final int TRAINER_PREVIEW_SIZE = 96;
 
@@ -180,11 +205,15 @@ public class SpriteImageLoader {
                 return Collections.emptyList();
             }
 
-            // Load all constituent files. Use the tiled NCGR (file 1) which
-            // has body parts split out, not the bitmap NCBR (file 0).
-            FSFile ncgrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCGR);
+            // Load all constituent files. Use the NCBR (file 0) — this is
+            // the 1D-mapped character block whose tile ordering matches what
+            // the NCER's OAM tileIndex values address. File 1 is a 2D-mapped
+            // display bitmap for editors; its tiles are in a different order
+            // and OAM indices won't land on the right body parts (famously
+            // cuts off Nate's feet).
+            FSFile ncgrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCBR);
             if (ncgrFile == null) {
-                ncgrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCBR);
+                ncgrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCGR);
             }
             FSFile nclrFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCLR);
             FSFile ncerFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NCER);
@@ -210,22 +239,17 @@ public class SpriteImageLoader {
                 return Collections.emptyList();
             }
 
-            // Render the static base sprite.
+            // Render the static base sprite. BW2 trainer NMARs are 1-frame
+            // idle poses; the in-game "breathing" oscillation is a battle
+            // UI effect, not part of the sprite data — we deliberately do
+            // NOT fake it here because it was incorrect (trainers stand
+            // still in the battle editor preview, matching NitroPaint's
+            // Multi-Cell Viewer behaviour).
             BufferedImage raw = renderBestAvailable(res);
             if (raw == null || raw.getWidth() <= 1) {
                 return Collections.emptyList();
             }
-
-            // Generate breathing animation frames by applying a sinusoidal
-            // vertical scale, anchored at the bottom of the sprite.
-            List<BufferedImage> frames = new ArrayList<>();
-            for (int k = 0; k < BREATH_FRAME_COUNT; k++) {
-                double phase = 2.0 * Math.PI * k / BREATH_FRAME_COUNT;
-                double scaleY = 1.0 + BREATH_AMPLITUDE * Math.sin(phase);
-                frames.add(scaleToPreviewWithBreath(raw, TRAINER_PREVIEW_SIZE, scaleY));
-            }
-
-            return frames;
+            return Collections.singletonList(scaleToPreviewWithBreath(raw, TRAINER_PREVIEW_SIZE, 1.0));
         } catch (Exception e) {
             System.err.println("[SpriteImageLoader] loadTrainerSpriteFrames failed for class " + trainerClassIndex + ": " + e);
             e.printStackTrace();

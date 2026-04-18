@@ -220,6 +220,13 @@ public class Gen5NGCS2DPlugin implements INGCS2DPlugin {
 					oam.flipH = ncerOam.flipH;
 					oam.flipV = ncerOam.flipV;
 					oam.priority = ncerOam.priority;
+					// Affine / double-size: NCER OAMs with rotationScaling
+					// may have doubleSize set, which shifts the on-screen
+					// content origin by (w/2, h/2). Carry these through so
+					// the renderer can position the content correctly.
+					oam.rotationScaling = ncerOam.rotationScaling;
+					oam.doubleSize = ncerOam.rotationScaling && ncerOam.doubleSize;
+					oam.rsParamIndex = ncerOam.rsParamIndex;
 					cell.addOAM(oam);
 				}
 				res.cells.add(cell);
