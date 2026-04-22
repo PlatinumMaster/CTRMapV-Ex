@@ -111,7 +111,12 @@ public class NMARAnimBank {
 			totalFrames += a.getFrameCount();
 		}
 
-		int offsetDataSequences = 0x1C;
+		// ABNK body header is 24 bytes (0x18): numSeq + numFrames + 3 offsets
+		// + 2 unknown words. Sequence table immediately follows. Writing
+		// 0x1C here was a stale mis-calculation — real BW2 NMARs have
+		// 0x18, and the 4-byte lie desynced the reader's seek by 4 bytes
+		// which eventually walked past EOF.
+		int offsetDataSequences = 0x18;
 		int offsetDataFrame = offsetDataSequences + numberSequences * 16;
 		int offsetDataFrameProperties = offsetDataFrame + totalFrames * 8;
 

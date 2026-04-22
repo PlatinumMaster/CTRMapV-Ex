@@ -91,6 +91,65 @@ public class SpriteImageLoader {
     /** Cached fallback palette for Pokemon icons (lazy-initialized). */
     private static Sprite2DPalette cachedIconFallbackPalette = null;
 
+    // ------------------------------------------------------------------
+    // Animation frame cache (bounded LRU).
+    //
+    // Loading a trainer or Pokemon battle sprite is expensive: 7-8 NARC
+    // reads + LZ decompression + full Nitro 2D parse + a 60-240 frame
+    // render pass. Without caching, every trainer selection change in
+    // the editor re-does all of it synchronously on the EDT for the
+    // trainer itself AND for every party Pokemon (up to 6 more full
+    // renders per switch). Caching the rendered frame list makes repeat
+    // selections basically instant and bounds how much memory the
+    // editor can accumulate over a session.
+    //
+    // Keyed by the integer class index / species index used by the
+    // loaders. Invalidated when the underlying NARC is edited — see
+    // {@link #invalidateTrainerSprite(int)}.
+    // ------------------------------------------------------------------
+
+    private static final int TRAINER_CACHE_CAPACITY = 24;
+    private static final int POKEMON_CACHE_CAPACITY = 48;
+
+    private static final java.util.Map<Integer, java.util.List<java.awt.image.BufferedImage>>
+        trainerFrameCache = java.util.Collections.synchronizedMap(
+            new java.util.LinkedHashMap<Integer, java.util.List<java.awt.image.BufferedImage>>(
+                TRAINER_CACHE_CAPACITY + 4, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(java.util.Map.Entry<Integer, java.util.List<java.awt.image.BufferedImage>> e) {
+                    return size() > TRAINER_CACHE_CAPACITY;
+                }
+            });
+
+    private static final java.util.Map<Integer, java.util.List<java.awt.image.BufferedImage>>
+        pokemonFrameCache = java.util.Collections.synchronizedMap(
+            new java.util.LinkedHashMap<Integer, java.util.List<java.awt.image.BufferedImage>>(
+                POKEMON_CACHE_CAPACITY + 4, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(java.util.Map.Entry<Integer, java.util.List<java.awt.image.BufferedImage>> e) {
+                    return size() > POKEMON_CACHE_CAPACITY;
+                }
+            });
+
+    /** Drops the cached frames for the given trainer class so the next
+     *  preview load re-renders from the NARC. Call after writing edits
+     *  back via {@link #saveTrainerSpriteResource}. */
+    public static void invalidateTrainerSprite(int trainerClassIndex) {
+        trainerFrameCache.remove(trainerClassIndex);
+    }
+
+    /** Drops the cached frames for the given species. Call after writing
+     *  edits back to the Pokemon battle-sprite NARC. */
+    public static void invalidatePokemonSprite(int speciesIndex) {
+        pokemonFrameCache.remove(speciesIndex);
+    }
+
+    /** Clears both caches — call on project unload / swap. */
+    public static void clearSpriteCaches() {
+        trainerFrameCache.clear();
+        pokemonFrameCache.clear();
+    }
+
     /**
      * Loads a Pokemon icon from the PML_G2D_POKE_ICON NARC.
      *
@@ -205,16 +264,45 @@ public class SpriteImageLoader {
      * cannot be loaded (e.g. BW1, missing files).
      */
     public static List<BufferedImage> loadTrainerSpriteFrames(NTRGameFS fs, GameInfo game, int trainerClassIndex) {
+        List<BufferedImage> cached = trainerFrameCache.get(trainerClassIndex);
+        if (cached != null) {
+            return cached;
+        }
+        Sprite2DResource res = loadTrainerSpriteResource(fs, game, trainerClassIndex);
+        if (res == null) {
+            List<BufferedImage> empty = Collections.emptyList();
+            trainerFrameCache.put(trainerClassIndex, empty);
+            return empty;
+        }
+        List<BufferedImage> frames = renderNmarTimeline(res);
+        trainerFrameCache.put(trainerClassIndex, frames);
+        return frames;
+    }
+
+    /**
+     * Builds a {@link Sprite2DResource} from the 8-file slot the trainer
+     * NARC reserves for one trainer class (NCBR, NCGR, NCER, NANR, NMCR,
+     * NMAR, xform, NCLR). Shared by the animation-frame preview renderer
+     * and the "Open in CS 2D" button — the latter hands the resource
+     * straight to the embedded NGCS2D editor so the user edits live
+     * sprite data with no intermediate re-import pass.
+     *
+     * @return a ready-to-render resource (cells/tileSheets/palettes all
+     *         non-empty), or {@code null} if the NARC entry can't be
+     *         loaded (BW1, missing files, empty slot).
+     */
+    public static Sprite2DResource loadTrainerSpriteResource(
+            NTRGameFS fs, GameInfo game, int trainerClassIndex) {
         try {
             if (NARCRef.TRAINER_G2D_BTL_F.getARCID(game) < 0) {
-                return Collections.emptyList();
+                return null;
             }
 
             int maxFiles = fs.NARCGetDataMax(NARCRef.TRAINER_G2D_BTL_F);
             int base = trainerClassIndex * TRAINER_FILES_PER_CLASS;
 
             if (base + TRAINER_OFF_NCLR >= maxFiles) {
-                return Collections.emptyList();
+                return null;
             }
 
             // BW/BW2 trainer NARCs ship TWO character blocks per class:
@@ -232,7 +320,7 @@ public class SpriteImageLoader {
             FSFile nmarFile = loadNarcFile(fs, NARCRef.TRAINER_G2D_BTL_F, base + TRAINER_OFF_NMAR);
 
             if ((ncbrFile == null && ncgrFile == null) || nclrFile == null) {
-                return Collections.emptyList();
+                return null;
             }
 
             // Build unified Sprite2DResource from all Nitro 2D files. Both
@@ -253,14 +341,80 @@ public class SpriteImageLoader {
             res.linkTileSheetsToCells();
 
             if (res.cells.isEmpty() || res.tileSheets.isEmpty() || res.palettes.isEmpty()) {
-                return Collections.emptyList();
+                return null;
             }
 
-            return renderNmarTimeline(res);
+            return res;
         } catch (Exception e) {
-            System.err.println("[SpriteImageLoader] loadTrainerSpriteFrames failed for class " + trainerClassIndex + ": " + e);
+            System.err.println("[SpriteImageLoader] loadTrainerSpriteResource failed for class "
+                + trainerClassIndex + ": " + e);
             e.printStackTrace();
-            return Collections.emptyList();
+            return null;
+        }
+    }
+
+    /**
+     * Writes an edited trainer {@link Sprite2DResource} back to the 8-file
+     * slot the trainer NARC reserves for the given class. Each of the six
+     * Nitro 2D blocks (NCLR/NCGR/NCER/NANR/NMCR/NMAR) is re-serialised
+     * via the matching {@code Gen5NGCS2DPlugin.CSNNS_*} exporter, which
+     * writes the updated bytes in place to the NARC's FSFile slot.
+     *
+     * <p>The transform file (slot +6) and the NCBR slot (+0, alternate
+     * character-data layout) are NOT re-written — they aren't surfaced in
+     * the NGCS2D editor UI, and the editor only produces a single active
+     * tile sheet per save. Preserving the NCBR slot verbatim means a
+     * save-then-reload round-trips cleanly on unedited tile data.</p>
+     *
+     * <p>Call sites are expected to also flush the NARC (e.g. via
+     * {@code NTRGameFS.save()}) after this returns — this method only
+     * updates the in-memory NARC entries.</p>
+     */
+    public static void saveTrainerSpriteResource(
+            NTRGameFS fs, int trainerClassIndex, Sprite2DResource res) {
+        if (res == null) return;
+        try {
+            int maxFiles = fs.NARCGetDataMax(NARCRef.TRAINER_G2D_BTL_F);
+            int base = trainerClassIndex * TRAINER_FILES_PER_CLASS;
+            if (base + TRAINER_OFF_NCLR >= maxFiles) {
+                return;
+            }
+            writeSlot(fs, base + TRAINER_OFF_NCGR, res, ImportType.CGR, "NCGR");
+            writeSlot(fs, base + TRAINER_OFF_NCER, res, ImportType.CER, "NCER");
+            writeSlot(fs, base + TRAINER_OFF_NANR, res, ImportType.ANR, "NANR");
+            writeSlot(fs, base + TRAINER_OFF_NMCR, res, ImportType.MCR, "NMCR");
+            writeSlot(fs, base + TRAINER_OFF_NMAR, res, ImportType.MAR, "NMAR");
+            writeSlot(fs, base + TRAINER_OFF_NCLR, res, ImportType.CLR, "NCLR");
+            // Bust the frame cache so the next preview render picks up
+            // the edited sprite instead of serving the pre-edit frames.
+            invalidateTrainerSprite(trainerClassIndex);
+        } catch (Exception e) {
+            System.err.println("[SpriteImageLoader] saveTrainerSpriteResource failed for class "
+                + trainerClassIndex + ": " + e);
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Writes one sprite block (one of NCLR/NCGR/NCER/NANR/NMCR/NMAR) back
+     * to its NARC slot using the matching CSNNS_* exporter.
+     */
+    private static void writeSlot(NTRGameFS fs, int fileIndex,
+            Sprite2DResource res, ImportType type, String label) {
+        FSFile target = fs.NARCGet(NARCRef.TRAINER_G2D_BTL_F, fileIndex);
+        if (target == null) return;
+        try {
+            switch (type) {
+                case CGR: Gen5NGCS2DPlugin.CSNNS_CGR.exportResource(res, target, null); break;
+                case CLR: Gen5NGCS2DPlugin.CSNNS_CLR.exportResource(res, target, null); break;
+                case CER: Gen5NGCS2DPlugin.CSNNS_CER.exportResource(res, target, null); break;
+                case ANR: Gen5NGCS2DPlugin.CSNNS_ANR.exportResource(res, target, null); break;
+                case MCR: Gen5NGCS2DPlugin.CSNNS_MCR.exportResource(res, target, null); break;
+                case MAR: Gen5NGCS2DPlugin.CSNNS_MAR.exportResource(res, target, null); break;
+            }
+        } catch (Exception e) {
+            System.err.println("[SpriteImageLoader] Failed to export " + label
+                + " to slot " + fileIndex + ": " + e);
         }
     }
 
@@ -291,6 +445,16 @@ public class SpriteImageLoader {
      *         no sprite data.
      */
     public static List<BufferedImage> loadPokemonBattleSpriteFrames(NTRGameFS fs, int speciesIndex) {
+        List<BufferedImage> cached = pokemonFrameCache.get(speciesIndex);
+        if (cached != null) {
+            return cached;
+        }
+        List<BufferedImage> frames = loadPokemonBattleSpriteFramesUncached(fs, speciesIndex);
+        pokemonFrameCache.put(speciesIndex, frames);
+        return frames;
+    }
+
+    private static List<BufferedImage> loadPokemonBattleSpriteFramesUncached(NTRGameFS fs, int speciesIndex) {
         try {
             if (speciesIndex < 0) {
                 return Collections.emptyList();

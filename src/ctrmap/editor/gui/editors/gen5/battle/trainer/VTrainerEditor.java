@@ -7,6 +7,7 @@ import ctrmap.editor.gui.editors.text.loaders.ITextArcType;
 import ctrmap.editor.system.workspace.CTRMapProject;
 import ctrmap.formats.common.GameInfo;
 import ctrmap.formats.pokemon.gen5.battle.trainer.WBTrainerData;
+import ctrmap.formats.pokemon.gen5.battle.trainer.WBTrainerMessageTable;
 import ctrmap.formats.pokemon.gen5.battle.trainer.WBTrainerPoke;
 import ctrmap.formats.pokemon.text.GenVMessageHandler;
 import ctrmap.formats.pokemon.text.MessageHandler;
@@ -54,6 +55,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
@@ -105,6 +107,11 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
     private JButton addPokeBtn;
     private JLabel partyHeaderLabel;
     private JLabel trainerSpriteLabel;
+    private JButton openInCS2DButton;
+
+    // Trainer Text tab
+    private VTrainerTextPanel trainerTextPanel;
+    private WBTrainerMessageTable trainerMessageTable = new WBTrainerMessageTable();
 
     // Sprite animation state
     private List<ImageIcon> spriteFrames = new ArrayList<>();
@@ -176,14 +183,28 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
         classScroll.setPreferredSize(new Dimension(260, 100));
         classPanel.add(classScroll, BorderLayout.CENTER);
 
-        // Sprite preview on the right side of class panel
+        // Sprite preview + "Open in CS 2D" button on the right side of
+        // class panel, stacked vertically.
+        JPanel spritePanel = new JPanel();
+        spritePanel.setLayout(new BoxLayout(spritePanel, BoxLayout.Y_AXIS));
         trainerSpriteLabel = new JLabel();
         trainerSpriteLabel.setHorizontalAlignment(SwingConstants.CENTER);
         trainerSpriteLabel.setVerticalAlignment(SwingConstants.CENTER);
+        trainerSpriteLabel.setAlignmentX(CENTER_ALIGNMENT);
         trainerSpriteLabel.setPreferredSize(new Dimension(96, 96));
         trainerSpriteLabel.setMinimumSize(new Dimension(96, 96));
+        trainerSpriteLabel.setMaximumSize(new Dimension(96, 96));
         trainerSpriteLabel.setBorder(BorderFactory.createEtchedBorder());
-        classPanel.add(trainerSpriteLabel, BorderLayout.EAST);
+        spritePanel.add(trainerSpriteLabel);
+        openInCS2DButton = new JButton("Open in CS 2D");
+        openInCS2DButton.setAlignmentX(CENTER_ALIGNMENT);
+        openInCS2DButton.setToolTipText(
+            "Open this trainer's sprite files in the CreativeStudio 2D editor");
+        openInCS2DButton.addActionListener(e -> openSpriteInCS2D());
+        openInCS2DButton.setEnabled(false);
+        spritePanel.add(Box.createRigidArea(new Dimension(0, 2)));
+        spritePanel.add(openInCS2DButton);
+        classPanel.add(spritePanel, BorderLayout.EAST);
         leftPanel.add(classPanel);
 
         // Items panel (2x2 grid)
@@ -312,11 +333,33 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
         // Add vertical glue so components stay at top
         leftPanel.add(Box.createVerticalGlue());
 
-        // --- Right panel ---
-        JPanel rightPanel = new JPanel(new BorderLayout(4, 4));
-        rightPanel.setBorder(BorderFactory.createTitledBorder("Party"));
+        // --- Right panel: tabbed (Party / Trainer Text) ---
+        JTabbedPane rightTabs = new JTabbedPane();
+        rightTabs.addTab("Party", createPartyTab());
+        trainerTextPanel = new VTrainerTextPanel();
+        rightTabs.addTab("Trainer Text", trainerTextPanel);
 
-        // Header with label + add/remove buttons
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.add(rightTabs, BorderLayout.CENTER);
+
+        // --- Split pane ---
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
+                new JScrollPane(leftPanel), rightPanel);
+        splitPane.setDividerLocation(390);
+        splitPane.setResizeWeight(0.0);
+
+        add(splitPane, BorderLayout.CENTER);
+    }
+
+    /**
+     * Builds the Party tab content (scrollable list of 6 party slot cards +
+     * header row). Extracted from the pre-tab layout so the right side can
+     * sit inside a JTabbedPane alongside the Trainer Text tab.
+     */
+    private JPanel createPartyTab() {
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        panel.setBorder(BorderFactory.createTitledBorder("Party"));
+
         JPanel partyHeaderPanel = new JPanel(new BorderLayout(4, 0));
         partyHeaderPanel.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
         partyHeaderLabel = new JLabel("Party (0/6)");
@@ -326,22 +369,40 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
         addPokeBtn = new JButton("Add Pokemon");
         partyBtnPanel.add(addPokeBtn);
         partyHeaderPanel.add(partyBtnPanel, BorderLayout.EAST);
-        rightPanel.add(partyHeaderPanel, BorderLayout.NORTH);
+        panel.add(partyHeaderPanel, BorderLayout.NORTH);
 
-        // Scrollable vertical list of party cards
         partyListPanel = new JPanel();
         partyListPanel.setLayout(new BoxLayout(partyListPanel, BoxLayout.Y_AXIS));
         JScrollPane partyScroll = new JScrollPane(partyListPanel);
         partyScroll.getVerticalScrollBar().setUnitIncrement(16);
-        rightPanel.add(partyScroll, BorderLayout.CENTER);
+        panel.add(partyScroll, BorderLayout.CENTER);
+        return panel;
+    }
 
-        // --- Split pane ---
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-                new JScrollPane(leftPanel), rightPanel);
-        splitPane.setDividerLocation(390);
-        splitPane.setResizeWeight(0.0);
-
-        add(splitPane, BorderLayout.CENTER);
+    /**
+     * Opens the currently selected trainer's sprite files in the
+     * CreativeStudio 2D editor. Uses the existing load pipeline from
+     * {@link SpriteImageLoader} to build a {@code Sprite2DResource} that
+     * NGCS2D's embedded constructor accepts directly, and wires a save
+     * callback that writes edits back into the trainer NARC slot.
+     */
+    private void openSpriteInCS2D() {
+        WBTrainerData trainer = GetCurrentTrainer();
+        if (trainer == null) return;
+        int trainerClass = trainer.GetAssignedClass();
+        VLaunchpad mc = Instance.getMissionControl(VLaunchpad.class);
+        ctrmap.creativestudio.ngcs2d.res.Sprite2DResource res =
+            SpriteImageLoader.loadTrainerSpriteResource(mc.fs, mc.game, trainerClass);
+        if (res == null) {
+            Logger.getLogger(VTrainerEditor.class.getName())
+                .warning("Cannot open CS 2D: sprite resource unavailable for class " + trainerClass);
+            return;
+        }
+        new ctrmap.creativestudio.ngcs2d.NGCS2D(res, edited -> {
+            SpriteImageLoader.saveTrainerSpriteResource(mc.fs, trainerClass, edited);
+            UI_UpdateTrainerSprite();
+            return true;
+        }).setVisible(true);
     }
 
     private void initListeners() {
@@ -363,6 +424,8 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
                 }
                 UI_UpdateMovesEnabled();
                 UI_UpdateHeldItemEnabled();
+                UI_UpdateTrainerText();
+                openInCS2DButton.setEnabled(GetCurrentTrainer() != null);
             }
         });
 
@@ -584,6 +647,38 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
             CurrentTrainer.Serialize(FS().NARCGet(NARCRef.TRAINER_DATA, Index),
                     FS().NARCGet(NARCRef.TRAINER_POKEMON, Index));
         }
+        // Persist trainer dialogue edits + the trainer-message index table.
+        // Both are scoped per-project (not per-trainer), so they're flushed
+        // once on each save regardless of which trainer was edited. BW1
+        // leaves trainerMessageTable.isLoaded() == false and save() becomes
+        // a no-op.
+        try {
+            if (TrDialogue != null) {
+                TrDialogue.store();
+            }
+        } catch (Exception ex) {
+            Logger.getLogger(VTrainerEditor.class.getName())
+                .log(Level.SEVERE, "Failed to store trainer dialogue", ex);
+        }
+        if (trainerMessageTable != null) {
+            trainerMessageTable.save(FS());
+        }
+    }
+
+    /** Binds the Trainer Text tab to the currently-selected trainer. */
+    private void UI_UpdateTrainerText() {
+        if (trainerTextPanel == null) return;
+        // Use the combo's selectedIndex directly. Going through
+        // Trainers.indexOf(currentTrainer) was fragile: if Trainers gets
+        // mutated anywhere (or if a trainer reference is swapped), indexOf
+        // can fall back to -1 or drift off the NARC slot — which flips
+        // the message-table filter to "no records" for every trainer
+        // except whichever one we last saw. The combo index IS the NARC
+        // slot by construction (LoadAllTrainers + the populate loop both
+        // iterate 0..max), so the direct lookup is both simpler and
+        // tolerant of any list mutation.
+        int trainerId = trainerSelector == null ? -1 : trainerSelector.getSelectedIndex();
+        trainerTextPanel.setTrainer(trainerId, trainerMessageTable, TrDialogue);
     }
 
     TextFile LoadSystemTextArchive(int Index) {
@@ -633,6 +728,11 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
             return;
         }
 
+        // Populate the trainer-message record table (ARC 090). On BW1
+        // the NARC is absent and load() leaves isLoaded()==false — the
+        // Trainer Text tab renders a "not supported" notice in that case.
+        trainerMessageTable.load(FS());
+
         // Setup trainer class list model.
         DefaultListModel TrClassModel = new DefaultListModel();
         for (MsgStr e : this.TrClasses.lines) {
@@ -676,6 +776,16 @@ public class VTrainerEditor extends javax.swing.JPanel implements AbstractTabbed
     // Trainer Properties
     private void UI_UpdatePartyList() {
         WBTrainerData CurrentTrainer = GetCurrentTrainer();
+        // Dispose the outgoing party components before detaching them —
+        // each one owns a 60Hz Timer that keeps firing otherwise, piling
+        // up one extra active Timer per Pokemon per trainer switch. The
+        // orphaned Timers were the main culprit behind the "editor slows
+        // down over time" complaint.
+        for (java.awt.Component c : partyListPanel.getComponents()) {
+            if (c instanceof VTrainerPartyComponent) {
+                ((VTrainerPartyComponent) c).dispose();
+            }
+        }
         partyListPanel.removeAll();
         if (CurrentTrainer != null) {
             for (int Index = 0; Index < CurrentTrainer.GetPkmnSize(); ++Index) {

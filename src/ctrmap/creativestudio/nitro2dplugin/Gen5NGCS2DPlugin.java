@@ -35,6 +35,7 @@ import ctrmap.formats.ntr.nitro2d.nmcr.NMCRMultiCell;
 import ctrmap.formats.ntr.nitro2d.nmcr.NMCRMultiCellProperty;
 import xstandard.fs.FSFile;
 import java.awt.Frame;
+import java.util.List;
 
 /**
  * NITRO 2D format plugin for NGCS2D.
@@ -246,10 +247,26 @@ public class Gen5NGCS2DPlugin implements INGCS2DPlugin {
 			int modeShift = (mode >= 0 && mode <= 3) ? mode : 0;
 			for (Sprite2DCell cell : res.cells) {
 				NCERCell ncerCell = new NCERCell();
-				for (Sprite2DOAM oam : cell.oams) {
+				// getVisibleOAMs() drops OAMs the user hid via the layer
+				// panel — those are editor-only and shouldn't appear in
+				// the exported NCER. Opacity < 1.0 is NOT representable
+				// in NITRO and is silently treated as fully opaque.
+				for (Sprite2DOAM oam : cell.getVisibleOAMs()) {
 					NCERCellOAM ncerOam = new NCERCellOAM();
 					ncerOam.x = oam.x;
 					ncerOam.y = oam.y;
+					// Encode width/height into Attr0 shape + Attr1 size via
+					// the GBATek lookup. Without this every exported OAM
+					// reads back as 8x8 — discovered by NitroExportRoundTripTest.
+					ctrmap.formats.ntr.nitro2d.common.GXObjShape gxs =
+						ctrmap.formats.ntr.nitro2d.common.GXObjShape.fromDimensions(oam.width, oam.height);
+					ncerOam.shape = gxs.shape;
+					ncerOam.size = gxs.size;
+					// Affine state — must be set before the tileIndex math
+					// below since colorMode256 is read there.
+					ncerOam.rotationScaling = oam.rotationScaling;
+					ncerOam.doubleSize = oam.doubleSize;
+					ncerOam.rsParamIndex = oam.rsParamIndex;
 					// Inverse of the import formula:
 					//   4bpp: charName = tileIdx >> shift
 					//   8bpp: charName = tileIdx << 1      (for shift=0)
@@ -385,10 +402,13 @@ public class Gen5NGCS2DPlugin implements INGCS2DPlugin {
 			int uniqueCounter = 0;
 			for (Sprite2DMultiCell smc : res.multiCells) {
 				NMCRMultiCell mc = new NMCRMultiCell();
-				int cnt = smc.entries.size();
+				// getVisibleEntries() mirrors Sprite2DCell.getVisibleOAMs()
+				// — drops entries the user hid via the layer panel.
+				List<Sprite2DMultiCell.MultiCellEntry> visible = smc.getVisibleEntries();
+				int cnt = visible.size();
 				mc.numberDisplayedCells = cnt;
 				mc.numberLoadedCells = cnt;
-				for (Sprite2DMultiCell.MultiCellEntry entry : smc.entries) {
+				for (Sprite2DMultiCell.MultiCellEntry entry : visible) {
 					NMCRMultiCellProperty p = new NMCRMultiCellProperty();
 					p.indexSequence = entry.animIndex;
 					p.translateX = (short) entry.x;

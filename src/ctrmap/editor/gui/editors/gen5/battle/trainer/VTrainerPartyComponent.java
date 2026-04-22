@@ -196,6 +196,21 @@ public class VTrainerPartyComponent extends JPanel {
         previewLabel.setIcon(spriteFrames.get(spriteAnimIndex));
     }
 
+    /**
+     * Must be called when this component is removed from the UI (e.g.
+     * when the trainer selector changes and the party list is rebuilt)
+     * so the sprite animation Timer stops firing. Swing's AncestorListener
+     * is flaky for nested scroll panes — call this explicitly from
+     * VTrainerEditor.UI_UpdatePartyList before removing children instead.
+     */
+    public void dispose() {
+        if (spriteAnimTimer != null) {
+            spriteAnimTimer.stop();
+            spriteAnimTimer = null;
+        }
+        spriteFrames.clear();
+    }
+
     private void initLayout(int slotIndex) {
         setBorder(BorderFactory.createTitledBorder("Slot " + (slotIndex + 1)));
         setLayout(new BorderLayout(4, 0));

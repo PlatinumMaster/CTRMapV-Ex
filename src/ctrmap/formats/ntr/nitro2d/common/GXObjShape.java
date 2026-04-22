@@ -53,6 +53,24 @@ public enum GXObjShape {
 	}
 
 	/**
+	 * Resolves the OBJ shape from pixel dimensions. Inverse of
+	 * {@link #fromBits} — used by the NCER exporter to encode an OAM's
+	 * {@code width}/{@code height} pair into the 2-bit shape + 2-bit
+	 * size attribute fields.
+	 *
+	 * @return The matching shape, or {@link #SQUARE_8x8} as a safe
+	 *         fallback for invalid combinations.
+	 */
+	public static GXObjShape fromDimensions(int width, int height) {
+		for (GXObjShape s : values()) {
+			if (s.width == width && s.height == height) {
+				return s;
+			}
+		}
+		return SQUARE_8x8;
+	}
+
+	/**
 	 * Gets the width in 8x8 tiles.
 	 */
 	public int getTileWidth() {

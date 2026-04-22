@@ -118,11 +118,19 @@ public class NMCRMultiCellBank {
 
 		int numberMultiCells = multiCells.size();
 
-		// Layout:
-		// container header is 0x18 bytes
-		// multi-cell entry table follows: numberMultiCells * 8
-		// then property table
-		int offsetDataMultiCell = 0x18;
+		// Layout (matches real BW2 NMCR layout — verified by dumping
+		// trainer-class-0 NMCR from a live ROM):
+		//   container header is 0x14 (20) bytes:
+		//     u16 numMultiCells + u16 marker + 3x u32 (2 offsets + 2 unknown)
+		//   WAIT — 20 bytes fits 2 u16s + 4 u32s = 4 + 16 = 20 bytes:
+		//     u16 numMC + u16 marker + u32 offMC + u32 offProps + u32 u1 + u32 u2
+		//   Sequence table follows immediately (each entry 8 bytes).
+		//
+		// Hardcoding 0x18 here was the same bug we hit in NMAR/NANR —
+		// the writer lied about where the entry table starts, so the
+		// reader seeked 4 bytes past the actual entry data and saw
+		// numberDisplayedCells = 0 (garbage), losing every multi-cell.
+		int offsetDataMultiCell = 0x14;
 		int offsetDataMultiCellProperties = offsetDataMultiCell + numberMultiCells * 8;
 
 		io.writeShort(numberMultiCells);

@@ -130,11 +130,18 @@ public class NANRAnimBank {
 		}
 
 		// Layout offsets:
-		// container header is 0x1C bytes
+		// container header is 0x18 (24) bytes:
+		//   u16 numSeq + u16 numFrames + 3x u32 offsets + 2x u32 unknown
 		// sequence table follows, sequenceCount * 16 bytes
 		// frame table follows, totalFrames * 8 bytes
 		// property data follows, sum of property sizes per frame
-		int offsetDataSequences = 0x1C;
+		//
+		// Previously hardcoded 0x1C — wrong. Real BW2 NANR files encode
+		// 0x18 at this offset, and the 4-byte gap between the written
+		// header (24 bytes) and the claimed offset (28 bytes) made the
+		// reader seek 4 bytes into seq[0], producing garbage sequence
+		// counts that walked the stream off the end of the buffer.
+		int offsetDataSequences = 0x18;
 		int offsetDataFrame = offsetDataSequences + numberSequences * 16;
 		int offsetDataFrameProperties = offsetDataFrame + totalFrames * 8;
 
