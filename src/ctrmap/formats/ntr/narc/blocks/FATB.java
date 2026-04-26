@@ -34,6 +34,7 @@ public class FATB {
 		while (targetEntry >= entries.size()) {
 			DataInfo e = new DataInfo();
 			e.startOffset = entries.get(entries.size()-1).endOffset;
+			e.endOffset = e.startOffset + 1;
 			entries.add(e);
 			sectionSize += DataInfo.BYTES;
 		}
