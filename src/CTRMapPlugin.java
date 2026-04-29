@@ -3,7 +3,10 @@ import ctrmap.CTRMapVResources;
 import ctrmap.Launc;
 import ctrmap.editor.CTRMapMenuActions;
 import ctrmap.editor.gui.editors.gen5.battle.encounters.VWildEditor;
+<<<<<<< HEAD
 import ctrmap.editor.gui.editors.gen5.battle.pokemon.VPokemonEditor;
+=======
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
 import ctrmap.editor.gui.editors.gen5.battle.trainer.VTrainerEditor;
 import ctrmap.editor.gui.editors.gen5.level.VLevelEditor;
 import ctrmap.editor.gui.editors.gen5.level.VZoneEditor;
@@ -19,6 +22,12 @@ import ctrmap.editor.gui.editors.gen5.level.entities.VWarpEditor;
 import ctrmap.editor.gui.editors.gen5.level.extra.VExtrasPanel;
 import ctrmap.editor.gui.editors.gen5.level.maps.VMapContainerEditor;
 import ctrmap.editor.gui.editors.gen5.level.maps.VZoneMatrixEditor;
+<<<<<<< HEAD
+=======
+import ctrmap.editor.gui.editors.gen5.battle.moves.VMoveEditor;
+import ctrmap.editor.gui.editors.gen5.debug.VDebuggerPanel;
+import ctrmap.editor.gui.editors.gen5.pokemon.VPokemonEditor;
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
 import ctrmap.editor.gui.editors.gen5.level.rail.VRailEditor;
 import ctrmap.editor.gui.editors.gen5.scripting.VScriptEditor;
 import ctrmap.editor.gui.editors.gen5.sequence.VSequenceEditor;
@@ -83,12 +92,22 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 			VZoneEditor.class,
 			VScriptEditor.class,
 			VEventEditor.class,
+<<<<<<< HEAD
 			VPokemonEditor.class,
 			VTrainerEditor.class,
 			VWildEditor.class,
 			VMapContainerEditor.class,
 			VZoneMatrixEditor.class,
 			VExtrasPanel.class
+=======
+			VTrainerEditor.class,
+			VWildEditor.class,
+			VZoneMatrixEditor.class,
+			VPokemonEditor.class,
+			VMoveEditor.class,
+			VExtrasPanel.class,
+			VDebuggerPanel.class
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
 		);
 
 		j.rmoRegistToolbarEditors(VSequenceEditor.class,

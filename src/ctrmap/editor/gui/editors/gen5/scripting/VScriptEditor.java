@@ -12,8 +12,11 @@ import ctrmap.editor.system.script.ScriptOpenMode;
 import ctrmap.editor.system.workspace.CTRMapProject;
 import ctrmap.editor.system.workspace.UserData;
 import ctrmap.formats.common.GameInfo;
+<<<<<<< HEAD
 import ctrmap.formats.common.GameInfoListener;
 import ctrmap.missioncontrol_base.debug.IMCDebugger;
+=======
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
 import ctrmap.missioncontrol_ntr.fs.NARCRef;
 import ctrmap.pokescript.ide.PSIDE;
 import ctrmap.pokescript.ide.system.IDEResourceReference;
@@ -25,7 +28,10 @@ import ctrmap.pokescript.ide.system.project.IDEFile;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.util.ArrayList;
+<<<<<<< HEAD
 import java.util.Collection;
+=======
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
 import java.util.List;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
@@ -38,20 +44,31 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import xstandard.fs.FSFile;
+<<<<<<< HEAD
 import xstandard.fs.accessors.DiskFile;
+=======
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
 
 public class VScriptEditor extends javax.swing.JPanel implements AbstractTabbedEditor {
     private CTRMap cm;
     private PSIDE ide;
     private IDEProject ideProject;
     private ScriptProjectParams setupParams;
+<<<<<<< HEAD
+=======
+    private int currentScriptIndex = -1;
+    private ScriptOpenMode currentMode = ScriptOpenMode.NONE;
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
     
     public VScriptEditor(CTRMap cm) {
         initComponents();
         this.cm = cm;
+<<<<<<< HEAD
         this.ide = new PSIDE();
         this.ide.initContext();
         this.idePanel.add(this.ide.getContentPane(), BorderLayout.CENTER);
+=======
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
     }
 
     /**
@@ -148,6 +165,7 @@ public class VScriptEditor extends javax.swing.JPanel implements AbstractTabbedE
     }//GEN-LAST:event_btnOpenScrInIDE6ActionPerformed
 
     private void btnOpenScrInIDE7ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenScrInIDE7ActionPerformed
+<<<<<<< HEAD
 
         for (FSFile f : this.ide.getOpenedFiles()) {
             try {
@@ -155,6 +173,22 @@ public class VScriptEditor extends javax.swing.JPanel implements AbstractTabbedE
                 Assembler.Assemble(f, output, this.cm.ideHelper.getCommandDBByOvlNo(-1));
             } catch (IOException ex) {
                 Logger.getLogger(VScriptEditor.class.getName()).log(Level.SEVERE, null, ex);
+=======
+        if (currentScriptIndex < 0) {
+            JOptionPane.showMessageDialog(this, "No script is currently open.", "Save Script", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        for (FSFile f : this.ide.getOpenedFiles()) {
+            try {
+                FSFile output = FS().NARCGet(NARCRef.FIELD_SCRIPTS, currentScriptIndex);
+                Assembler.Assemble(f, output, this.cm.ideHelper.getCommandDBByOvlNo(-1));
+                JOptionPane.showMessageDialog(this, "Script saved successfully.", "Save Script", JOptionPane.INFORMATION_MESSAGE);
+            } catch (UnsupportedOperationException ex) {
+                JOptionPane.showMessageDialog(this, "The assembler is not yet implemented.\nYour edits are preserved in the IDE workspace.", "Save Script", JOptionPane.WARNING_MESSAGE);
+            } catch (IOException ex) {
+                Logger.getLogger(VScriptEditor.class.getName()).log(Level.SEVERE, null, ex);
+                JOptionPane.showMessageDialog(this, "Failed to save script: " + ex.getMessage(), "Save Script", JOptionPane.ERROR_MESSAGE);
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
             }
         }
     }//GEN-LAST:event_btnOpenScrInIDE7ActionPerformed
@@ -166,6 +200,7 @@ public class VScriptEditor extends javax.swing.JPanel implements AbstractTabbedE
 
     @Override
     public boolean isGameSupported(GameInfo game) {
+<<<<<<< HEAD
         return AbstractTabbedEditor.super.isGameSupported(game); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
     }
 
@@ -202,10 +237,14 @@ public class VScriptEditor extends javax.swing.JPanel implements AbstractTabbedE
     @Override
     public void handleGlobalEvent(String eventId, Object... params) {
         AbstractTabbedEditor.super.handleGlobalEvent(eventId, params); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
+=======
+        return game.isGenV();
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
     }
 
     @Override
     public void onProjectLoaded(CTRMapProject proj) {
+<<<<<<< HEAD
         this.setupParams = new VProjectSetupParams.ScriptProjectParams(this.cm, this.cm.getGame());
         this.cm.ideHelper.setIDE(this.ide);
         this.ideProject = this.cm.ideHelper.getOrCreateProject(this.setupParams);
@@ -214,11 +253,37 @@ public class VScriptEditor extends javax.swing.JPanel implements AbstractTabbedE
         Dependency dep = new Dependency(DependencyType.DIRECTORY);
         dep.ref = new IDEResourceReference(ResourcePathType.ON_DISK, cm.getProject().userData.getUserDataDir(UserData.UsrDirectory.SCRIPT_INCLUDE).getPath());
         this.ideProject.addDependency(this.ide.context, dep);
+=======
+        // Get the IDE from the helper — it handles workspace loading and context setup
+        this.ide = this.cm.ideHelper.getIDE();
+        this.idePanel.removeAll();
+        this.idePanel.add(this.ide.getContentPane(), BorderLayout.CENTER);
+        this.idePanel.revalidate();
+
+        this.setupParams = new VProjectSetupParams.ScriptProjectParams(this.cm, this.cm.getGame());
+        this.ideProject = this.cm.ideHelper.getOrCreateProject(this.setupParams);
+        this.ide.openProject(this.ideProject);
+
+        Dependency dep = new Dependency(DependencyType.DIRECTORY);
+        dep.ref = new IDEResourceReference(ResourcePathType.ON_DISK, cm.getProject().userData.getUserDataDir(UserData.UsrDirectory.SCRIPT_INCLUDE).getPath());
+        this.ideProject.addDependency(this.ide.context, dep);
+
+        int max = FS().NARCGetDataMax(NARCRef.FIELD_SCRIPTS) - 1;
+        if (max < 0) max = 0;
+        this.scriptIdxSpinner.setModel(new javax.swing.SpinnerNumberModel(0, 0, max, 1));
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
     }
 
     @Override
     public void onProjectUnloaded(CTRMapProject proj) {
+<<<<<<< HEAD
         AbstractTabbedEditor.super.onProjectUnloaded(proj); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
+=======
+        this.ideProject = null;
+        this.setupParams = null;
+        this.currentScriptIndex = -1;
+        this.currentMode = ScriptOpenMode.NONE;
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
     }
     
     NTRGameFS FS() {
@@ -229,6 +294,7 @@ public class VScriptEditor extends javax.swing.JPanel implements AbstractTabbedE
         if (Index < 0 || Index > FS().NARCGetDataMax(NARCRef.FIELD_SCRIPTS)) {
             return;
         }
+<<<<<<< HEAD
         
         VScriptFile script = new VScriptFile(FS().NARCGet(NARCRef.FIELD_SCRIPTS, Index));
         this.setupParams.setScript(script, Index, overlayIds, Mode);
@@ -240,11 +306,30 @@ public class VScriptEditor extends javax.swing.JPanel implements AbstractTabbedE
         }
         
         IDEFile f = this.cm.ideHelper.getScriptByProject(this.setupParams, ideProject, String.format( "%s%s", this.setupParams.getMainClassName(), extension));
+=======
+
+        this.currentScriptIndex = Index;
+        this.currentMode = Mode;
+
+        VScriptFile script = new VScriptFile(FS().NARCGet(NARCRef.FIELD_SCRIPTS, Index));
+        this.setupParams.setScript(script, Index, overlayIds, Mode);
+        String extension;
+        if (Mode == ScriptOpenMode.DECOMPILE) {
+            extension = LangConstants.LANG_SOURCE_FILE_EXTENSION;
+        } else {
+            extension = ".asm";
+        }
+
+        IDEFile f = this.cm.ideHelper.getScriptByProject(this.setupParams, ideProject, String.format("%s%s", this.setupParams.getMainClassName(), extension));
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
         ide.resyncProject(this.ideProject);
         ide.openFile(f);
         ide.makeTree();
         ide.syncOpenedFilesWithSaveData();
+<<<<<<< HEAD
         
+=======
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
     }
     
     private ScriptOpenMode getScriptOpenMode() {
@@ -309,7 +394,11 @@ public class VScriptEditor extends javax.swing.JPanel implements AbstractTabbedE
                     plugins.add(pluginIndices.get(boxIndex));
                 }
             }
+<<<<<<< HEAD
             return pluginIndices.stream().mapToInt(Integer::intValue).toArray();
+=======
+            return plugins.stream().mapToInt(Integer::intValue).toArray();
+>>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
         } 
         return new int[] {};
     }
