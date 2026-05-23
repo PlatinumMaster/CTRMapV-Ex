@@ -32,3 +32,6 @@ nbproject/private
 # IntelliJ IDEA
 .idea/
 *.iml
+
+# MacOS
+.DS_Store
