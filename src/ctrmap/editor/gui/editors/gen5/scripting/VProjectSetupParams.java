@@ -7,12 +7,9 @@ import ctrmap.formats.common.GameInfo;
 import ctrmap.scriptformats.gen5.VCommandDataBase;
 import ctrmap.scriptformats.gen5.VDecompiler;
 import ctrmap.scriptformats.gen5.VScriptFile;
-<<<<<<< HEAD
-=======
 import ctrmap.scriptformats.gen5.disasm.DisassembledCall;
 import ctrmap.scriptformats.gen5.disasm.DisassembledMethod;
 import ctrmap.scriptformats.gen5.disasm.LinkPrototype;
->>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
 import ctrmap.scriptformats.gen5.disasm.VDisassembler;
 import xstandard.gui.DialogUtils;
 import xstandard.text.FormattingUtils;
@@ -57,9 +54,6 @@ public class VProjectSetupParams {
                                 disassembler.disassemble();
                                 try {
                                         StringBuilder sb = new StringBuilder();
-<<<<<<< HEAD
-                                        sb.append(disassembler.dump());
-=======
                                         sb.append("// Disassembled output\n\n");
 
                                         // Build map of instruction pointer -> all public labels
@@ -112,7 +106,6 @@ public class VProjectSetupParams {
                                                 }
                                                 sb.append("\n");
                                         }
->>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
                                         return sb.toString().getBytes();
                                 } catch (Exception ex) {
                                         ex.printStackTrace();

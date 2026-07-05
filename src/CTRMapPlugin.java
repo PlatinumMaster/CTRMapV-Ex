@@ -3,10 +3,6 @@ import ctrmap.CTRMapVResources;
 import ctrmap.Launc;
 import ctrmap.editor.CTRMapMenuActions;
 import ctrmap.editor.gui.editors.gen5.battle.encounters.VWildEditor;
-<<<<<<< HEAD
-import ctrmap.editor.gui.editors.gen5.battle.pokemon.VPokemonEditor;
-=======
->>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
 import ctrmap.editor.gui.editors.gen5.battle.trainer.VTrainerEditor;
 import ctrmap.editor.gui.editors.gen5.level.VLevelEditor;
 import ctrmap.editor.gui.editors.gen5.level.VZoneEditor;
@@ -22,12 +18,9 @@ import ctrmap.editor.gui.editors.gen5.level.entities.VWarpEditor;
 import ctrmap.editor.gui.editors.gen5.level.extra.VExtrasPanel;
 import ctrmap.editor.gui.editors.gen5.level.maps.VMapContainerEditor;
 import ctrmap.editor.gui.editors.gen5.level.maps.VZoneMatrixEditor;
-<<<<<<< HEAD
-=======
 import ctrmap.editor.gui.editors.gen5.battle.moves.VMoveEditor;
 import ctrmap.editor.gui.editors.gen5.debug.VDebuggerPanel;
 import ctrmap.editor.gui.editors.gen5.pokemon.VPokemonEditor;
->>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
 import ctrmap.editor.gui.editors.gen5.level.rail.VRailEditor;
 import ctrmap.editor.gui.editors.gen5.scripting.VScriptEditor;
 import ctrmap.editor.gui.editors.gen5.sequence.VSequenceEditor;
@@ -39,7 +32,6 @@ import ctrmap.editor.system.juliet.ICTRMapPlugin;
 import ctrmap.editor.system.workspace.CTRMapProject;
 import ctrmap.formats.common.GameInfo;
 import ctrmap.formats.ntr.rom.srl.NDSROM;
-import ctrmap.util.tools.VFS;
 import ctrmap.util.tools.cont.ContainerUtil;
 import java.io.IOException;
 import java.util.logging.Level;
@@ -92,14 +84,6 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 			VZoneEditor.class,
 			VScriptEditor.class,
 			VEventEditor.class,
-<<<<<<< HEAD
-			VPokemonEditor.class,
-			VTrainerEditor.class,
-			VWildEditor.class,
-			VMapContainerEditor.class,
-			VZoneMatrixEditor.class,
-			VExtrasPanel.class
-=======
 			VTrainerEditor.class,
 			VWildEditor.class,
 			VZoneMatrixEditor.class,
@@ -107,7 +91,6 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 			VMoveEditor.class,
 			VExtrasPanel.class,
 			VDebuggerPanel.class
->>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
 		);
 
 		j.rmoRegistToolbarEditors(VSequenceEditor.class,
@@ -116,6 +99,37 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 		);
 	}
 
+	private void loadVFS(MemoryFile destDir, VFSFile src) {
+		for (VFSFile child : src.listFiles()) {
+			FSFile ov = child.getOvFile();
+			FSFile base = child.getBaseFile();
+			if (base == null || !base.exists()) {
+				destDir.linkChild(new ProxyFile(ov, ov.getPathRelativeTo(src.getVFS().getOvFSRoot()))); //use entire overlay file directly
+			} else {
+				//merge ovfs into basefs
+				if (!ov.exists()) {
+					destDir.linkChild(new ProxyFile(base, base.getPathRelativeTo(src.getVFS().getBaseFSRoot())));
+				} else {
+					if (base instanceof ArcFile) {
+						ArcFile arc = (ArcFile) base;
+						ArcInput[] inputs = src.getVFS().getArcInputs(ov, ov).toArray(new ArcInput[0]);
+						if (inputs.length > 0) {
+							MemoryFile newArc = new MemoryFile(arc.getName(), arc.getBytes());
+							ArcFile newArcFileObj = new ArcFile(newArc, src.getVFS().getArcFileAccessor());
+							src.getVFS().getArcFileAccessor().writeToArcFile(newArcFileObj, null, inputs);
+							arc = newArcFileObj;
+						}
+						destDir.linkChild(new ProxyFile(arc.getSource(), base.getPathRelativeTo(src.getVFS().getBaseFSRoot())));
+					} else if (base.isDirectory()) {
+						MemoryFile subDir = destDir.createChildDir(base.getName());
+						loadVFS(subDir, child);
+					} else {
+						destDir.linkChild(new ProxyFile(ov, ov.getPathRelativeTo(src.getVFS().getOvFSRoot())));
+					}
+				}
+			}
+		}
+	}
 
 	@Override
 	public void registUI(CTRMapPluginInterface j, GameInfo game) {
@@ -137,7 +151,7 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 							proj.saveProjectData();
 
 							MemoryFile romRoot = new MemoryFile("__ROM");
-							VFS.load(romRoot, proj.wsfs.vfs.getVFSRoot());
+							loadVFS(romRoot, proj.wsfs.vfs.getVFSRoot());
 
 							try {
 								NDSROM.buildROM(romRoot, new DiskFile(path));

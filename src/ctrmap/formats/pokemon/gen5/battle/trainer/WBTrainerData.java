@@ -145,15 +145,6 @@ public class WBTrainerData {
     public int GetPkmnSize() {
         return this.TrPoke.size();
     }
-<<<<<<< HEAD
-    
-    public WBTrainerPoke GetPkmn(int Index) {
-        return Index < GetPkmnSize() ? this.TrPoke.get(Index) : null;
-    }
-    
-    public void AddPkmn(WBTrainerPoke pkmn) {
-        this.TrPoke.add(pkmn);
-=======
 
     public WBTrainerPoke GetPkmn(int Index) {
         return Index < GetPkmnSize() ? this.TrPoke.get(Index) : null;
@@ -169,7 +160,6 @@ public class WBTrainerData {
         if (Index >= 0 && Index < this.TrPoke.size()) {
             this.TrPoke.remove(Index);
         }
->>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
     }
     
     public void Serialize(FSFile TrDat, FSFile TrPoke) {
@@ -192,11 +182,7 @@ public class WBTrainerData {
                 DataIOStream TrPokeStrm = TrPoke.getDataIOStream();
                 TrDatStrm.writeByte(this.CanHeal ? 1 : 0);
                 TrDatStrm.writeByte(this.Money);
-<<<<<<< HEAD
-                TrDatStrm.writeByte(this.Prize); 
-=======
                 TrDatStrm.writeShort(this.Prize);
->>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
                 for (WBTrainerPoke Entry : this.TrPoke) {
                     Entry.Serialize(TrPokeStrm, this.CanOverrideHeldItem(), this.CanOverrideMoves());
                 }

@@ -52,16 +52,16 @@ public class VWildComponent extends javax.swing.JPanel {
             this.rareGrassPanel.add(new VWildEncounterSlot(this.encs.get(Index).GetGrassEncounter(WBEnc.WBEncType.GRASS_RARE, EncIdx), this.PkmnNames));
         }            
         for (int EncIdx = 0; EncIdx < WBEnc.FISH_ENC_SLOTS; ++EncIdx) {
-            this.regFishPanel.add(new VWildEncounterSlot(this.encs.get(Index).GetGrassEncounter(WBEnc.WBEncType.FISH, EncIdx), this.PkmnNames));
+            this.regFishPanel.add(new VWildEncounterSlot(this.encs.get(Index).GetFishEncounter(WBEnc.WBEncType.FISH, EncIdx), this.PkmnNames));
         }  
         for (int EncIdx = 0; EncIdx < WBEnc.FISH_ENC_SLOTS; ++EncIdx) {
-            this.rareFishPanel.add(new VWildEncounterSlot(this.encs.get(Index).GetGrassEncounter(WBEnc.WBEncType.FISH_RARE, EncIdx), this.PkmnNames));
+            this.rareFishPanel.add(new VWildEncounterSlot(this.encs.get(Index).GetFishEncounter(WBEnc.WBEncType.FISH_RARE, EncIdx), this.PkmnNames));
         }            
         for (int EncIdx = 0; EncIdx < WBEnc.SURF_ENC_SLOTS; ++EncIdx) {
-            this.regSurfPanel.add(new VWildEncounterSlot(this.encs.get(Index).GetGrassEncounter(WBEnc.WBEncType.SURF, EncIdx), this.PkmnNames));
+            this.regSurfPanel.add(new VWildEncounterSlot(this.encs.get(Index).GetSurfEncounter(WBEnc.WBEncType.SURF, EncIdx), this.PkmnNames));
         }  
         for (int EncIdx = 0; EncIdx < WBEnc.SURF_ENC_SLOTS; ++EncIdx) {
-            this.rareSurfPanel.add(new VWildEncounterSlot(this.encs.get(Index).GetGrassEncounter(WBEnc.WBEncType.SURF_RARE, EncIdx), this.PkmnNames));
+            this.rareSurfPanel.add(new VWildEncounterSlot(this.encs.get(Index).GetSurfEncounter(WBEnc.WBEncType.SURF_RARE, EncIdx), this.PkmnNames));
         }
     }
         

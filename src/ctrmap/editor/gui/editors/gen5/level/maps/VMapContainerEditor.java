@@ -37,8 +37,6 @@ public class VMapContainerEditor extends javax.swing.JPanel implements AbstractT
     public VMapContainerEditor(CTRMap Instance) {
         initComponents();
         this.Instance = Instance;
-<<<<<<< HEAD
-=======
 
         // Wire export buttons not handled by the form editor
         jButton5.addActionListener(evt -> exportFile(Permissions, "Permissions"));
@@ -60,7 +58,6 @@ public class VMapContainerEditor extends javax.swing.JPanel implements AbstractT
                 }
             }
         }
->>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
     }
         
     public String getTabName() {
@@ -449,11 +446,7 @@ public class VMapContainerEditor extends javax.swing.JPanel implements AbstractT
     }//GEN-LAST:event_jButton13ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-<<<<<<< HEAD
-        // TODO add your handling code here:
-=======
         exportFile(Map, "Model");
->>>>>>> 687ba7a2a4bb0efb135b3f8e32f3f1163e8d32f2
     }//GEN-LAST:event_jButton2ActionPerformed
 
 

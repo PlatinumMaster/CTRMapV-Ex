@@ -278,8 +278,9 @@ public class VPokemonEditor extends javax.swing.JPanel implements AbstractTabbed
         
     private void btnOpenScrInIDE22ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenScrInIDE22ActionPerformed
         // Check if the user directory exists.
-        FSFile pml_personal_user_directory = Instance.getProject().userData.getUserDataDir(UserData.UsrDirectory.PML_PERSONAL);
-        FSFile pml_learnset_user_directory = Instance.getProject().userData.getUserDataDir(UserData.UsrDirectory.LEARNSET_DATA);
+        FSFile userRoot = Instance.getProject().userData.getUserDataDir(UserData.UsrDirectory.ENUMS).getParent();
+        FSFile pml_personal_user_directory = userRoot.getChild("pml/personal");
+        FSFile pml_learnset_user_directory = userRoot.getChild("pml/learnsets");
         
         int personalIndex = speciesSelector.getValueSpinner();
         String personal_yaml_name = String.format("%d.yml", personalIndex);
