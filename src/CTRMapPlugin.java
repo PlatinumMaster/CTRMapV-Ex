@@ -16,6 +16,7 @@ import ctrmap.editor.gui.editors.gen5.level.entities.VScriptingAssistant;
 import ctrmap.editor.gui.editors.gen5.level.entities.VTriggerEditor;
 import ctrmap.editor.gui.editors.gen5.level.entities.VWarpEditor;
 import ctrmap.editor.gui.editors.gen5.level.extra.VExtrasPanel;
+import ctrmap.util.tools.medals.VMedals;
 import ctrmap.editor.gui.editors.gen5.level.maps.VMapContainerEditor;
 import ctrmap.editor.gui.editors.gen5.level.maps.VZoneMatrixEditor;
 import ctrmap.editor.gui.editors.gen5.battle.moves.VMoveEditor;
@@ -183,6 +184,16 @@ public class CTRMapPlugin implements ICTRMapPlugin {
 				ut.setLocationRelativeTo(cm);
 				ut.setVisible(true);
 			});
+
+			if (game.isBW2()) {
+				j.rmoAddSubMenu("Tools", "Editors");
+
+				j.rmoAddMenuItem("Editors", "Medals", (cm) -> {
+					VMedals vmdl = new VMedals(cm, true);
+					vmdl.setLocationRelativeTo(cm);
+					vmdl.setVisible(true);
+				});
+			}
 
 			j.rmoAddAboutDialogCredits(
 				"Martin Korth - GBATek Nintendo DS hardware documentation",
