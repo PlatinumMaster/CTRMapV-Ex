@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: PlatinumMaster/CTRMap-CE
-          ref: main
+          ref: ${{ github.base_ref || github.ref_name }}
           path: CTRMap-CE
           submodules: recursive
 
